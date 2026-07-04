@@ -56,7 +56,8 @@ def unreferenced(skill_dir: Path, files: list) -> list:
 
 def measure(skill_dir: Path) -> dict:
     files = [f for f in sorted(skill_dir.rglob("*"))
-             if f.is_file() and f.name != ".DS_Store"]
+             if f.is_file() and f.name != ".DS_Store"
+             and ".git" not in f.relative_to(skill_dir).parts]
     skill_md = skill_dir / "SKILL.md"
     body = body_of(skill_md)
     scripts_loc = sum(
@@ -98,6 +99,7 @@ def main() -> int:
         "webapp-testing": args.originals / "anthropic-skills" / "skills" / "webapp-testing",
         "systematic-debugging": args.originals / "superpowers" / "skills" / "systematic-debugging",
         "vercel-cli-with-tokens": args.originals / "vercel-agent-skills" / "skills" / "vercel-cli-with-tokens",
+        "humanizer": args.originals / "humanizer",
     }
     results = {}
     for name, original in pairs.items():

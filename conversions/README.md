@@ -11,6 +11,12 @@ records its origin, license, and the exact deltas.
 | [`webapp-testing`](webapp-testing) | anthropics/skills | context, proc, learn |
 | [`systematic-debugging`](systematic-debugging) | obra/superpowers | flow, learn |
 | [`vercel-cli-with-tokens`](vercel-cli-with-tokens) | vercel-labs/agent-skills | secrets, store, context, learn |
+| [`humanizer`](humanizer) | blader/humanizer | flow, store, learn |
+
+The humanizer conversion was performed by the `converting-skills`
+skill in [`skills/`](../skills), driving its enforced triage, scaffold,
+port, verify, compare flow; the conversion playbook distilled from all
+four ports lives in that skill's `references/`.
 
 Each is installable as-is:
 

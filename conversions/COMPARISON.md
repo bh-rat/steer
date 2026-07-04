@@ -1,15 +1,15 @@
 # Rebuilding famous skills on steer: what actually changes
 
-Three of the most-installed open Agent Skills, rebuilt on steer with
-their content and behavior preserved, then measured against the
-originals. Every number below is reproducible from this directory; no
-LLM judging is involved.
+Four famous open Agent Skills, rebuilt on steer with their content and
+behavior preserved, then measured against the originals. Every number
+below is reproducible from this directory; no LLM judging is involved.
 
 | Original | Source (license) | What it exercises |
 |---|---|---|
 | `webapp-testing` | anthropics/skills (Apache-2.0) | managed processes, context recon |
 | `systematic-debugging` | obra/superpowers (MIT) | flow enforcement, learning loop |
 | `vercel-cli-with-tokens` | vercel-labs/agent-skills (MIT per README; repo ships no LICENSE file) | credentials, store, context |
+| `humanizer` | blader/humanizer (MIT) | flow with output gates, store, context economy |
 
 The originals are famous for a reason: all three pass `steer validate`
 with zero errors. The differences live in runtime behavior, failure
@@ -27,6 +27,7 @@ Five deterministic checks, run by `compare/behavior.py`:
 | Server dies at startup (T3) | 6.1s wait, cause absent from output | fails in 0.3s, cause in output |
 | Premature "done" on debugging flow (T4) | prose only; nothing refuses | refused with exit 1; steps unlock in phase order; 5/5 only after artifacts exist |
 | Token discovery (T5) | documented command prints the token value into the transcript | names-only check, exit 1 handoff with the exact fix command, value never printed |
+| Final rewrite containing an em dash (T6) | rule 14 is prose; nothing checks the output | flow refuses to count the final step done until the artifact is dash-free |
 
 ## Case 1: webapp-testing (Anthropic)
 
@@ -109,6 +110,37 @@ Context economy: troubleshooting, domains, and Stripe plan sections
 move behind `references/` pointers. Body: ~2525 to ~1936 estimated
 tokens (-23%) with identical capability.
 
+## Case 4: humanizer (blader)
+
+The viral single-file skill: 622 lines, pure prose, no machinery at
+all, which makes it the honest boundary test. Its 33 patterns are
+tuned teaching content; the rebuild keeps them byte-identical and does
+not pretend steer improves them.
+
+What conversion still found:
+
+- **Context cost.** The original loads ~8329 estimated tokens into
+  context on every trigger, 66% over the 5k guidance
+  (`steer validate` flags it). The worked example and the voice
+  calibration branch are load-on-demand material; behind `references/`
+  pointers the every-trigger body drops to ~7207 tokens (-13%). The
+  remaining overage is the patterns themselves, kept deliberately:
+  that trim belongs to the original author, not a port (NOTICE.md).
+- **The skill's own rule, machine-held.** The original's process ends
+  "contains no em or en dashes" as prose. The rebuild's flow refuses
+  to count the final stage complete while the artifact contains one.
+  Measured: with an em dash in `out/humanize/final.md` the flow
+  reports 2/3 complete; removing it flips the same command to 3/3.
+- **Voice profiles persist.** The original re-analyzes the user's
+  writing sample every session; the rebuild stores the analyzed
+  profile per user (`steer store`) and reads it back next run.
+- Frontmatter: the original's top-level `version:` is not a spec
+  field (clients ignore it); it moved to `metadata.version`.
+
+This conversion was driven end to end by the `converting-skills` skill
+in `skills/`, through its enforced triage, scaffold, port, verify,
+compare flow.
+
 ## Static comparison
 
 From `compare/metrics.py` (tokens estimated at 4 chars/token, the
@@ -122,6 +154,8 @@ same estimate `steer validate` uses):
 | systematic-debugging steer | 2245 | 221 | 0 | clean |
 | vercel-cli-with-tokens original | 2525 | 0 | 0 | clean |
 | vercel-cli-with-tokens steer | 1936 | 0 | 0 | clean |
+| humanizer original | 8329 | 0 | 1 | 3 warnings, 1 info |
+| humanizer steer | 7207 | 0 | 0 | 2 warnings (deliberate, see NOTICE) |
 
 The webapp-testing script delta that matters: 105 of the original's
 214 lines are the server-lifecycle helper, deleted outright; the
@@ -152,11 +186,12 @@ from the literature is that content-level gains are task-dependent.
 ## Reproduce
 
 ```bash
-# originals (three shallow clones)
+# originals (four shallow clones)
 mkdir -p /tmp/skill-originals && cd /tmp/skill-originals
 git clone --depth 1 https://github.com/anthropics/skills anthropic-skills
 git clone --depth 1 https://github.com/obra/superpowers superpowers
 git clone --depth 1 https://github.com/vercel-labs/agent-skills vercel-agent-skills
+git clone --depth 1 https://github.com/blader/humanizer humanizer
 
 # from this directory
 python3 compare/behavior.py --originals /tmp/skill-originals

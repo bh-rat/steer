@@ -8,6 +8,7 @@ Five reproducible checks, no LLM involved:
   T3  startup failure diagnostics         (webapp-testing)
   T4  phase gates actually gate           (systematic-debugging)
   T5  credential handling                 (vercel-cli-with-tokens)
+  T6  the skill's own rule, machine-held  (humanizer)
 
 Usage:
   python3 behavior.py --originals <dir with anthropic-skills/ superpowers/ vercel-agent-skills/>
@@ -262,6 +263,34 @@ def t5_credentials(originals: Path, tmp: Path):
     return facts
 
 
+def t6_dash_gate(tmp: Path):
+    """Humanizer's rule 14 (no em/en dashes) enforced on the final artifact."""
+    ws = tmp / "t6-ws"
+    (ws / "out" / "humanize").mkdir(parents=True)
+    flow_file = CONVERSIONS / "humanizer" / "flow.toml"
+
+    def flow(*args):
+        return run([STEER, "flow", *args, "--file", str(flow_file),
+                    "--workspace", str(ws)], cwd=str(ws))[0]
+
+    (ws / "out" / "humanize" / "draft.md").write_text("draft\n", encoding="utf-8")
+    (ws / "out" / "humanize" / "tells.md").write_text("tells\n", encoding="utf-8")
+    final = ws / "out" / "humanize" / "final.md"
+
+    final.write_text("Lisbon is beautiful — and exhausting.\n",
+                     encoding="utf-8")
+    with_dash = json.loads(flow("status", "--json").stdout)["progress"]
+    final.write_text("Lisbon is beautiful, and exhausting.\n",
+                     encoding="utf-8")
+    without_dash = json.loads(flow("status", "--json").stdout)["progress"]
+    return {
+        "final_with_em_dash_counts_done": with_dash["completed_steps"] == 3,
+        "completed_with_dash": with_dash["completed_steps"],
+        "completed_without_dash": without_dash["completed_steps"],
+        "original_equivalent": "rule 14 is prose; nothing checks the output",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--originals", required=True, type=Path,
@@ -284,6 +313,7 @@ def main() -> int:
             "t3_startup_diagnostics": t3_startup_diagnostics(with_server, tmp),
             "t4_flow_gates": t4_flow_gates(tmp),
             "t5_credentials": t5_credentials(args.originals, tmp),
+            "t6_dash_gate": t6_dash_gate(tmp),
         }
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
