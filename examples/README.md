@@ -17,7 +17,11 @@ steer new repo-health \
 ```
 
 Produces `out/health/REPORT.md` for any repository, with trends against
-the previous run. What each component does here:
+the previous run. The scaffold also wrote `scripts/steer.py`, the
+skill's bundled runtime: a generated, self-contained copy of exactly
+these six components, which is what SKILL.md invokes, so agents run
+this skill with plain `python3`, no steer install. What each component
+does here:
 
 | Component | Role in this skill |
 |---|---|
@@ -28,9 +32,11 @@ the previous run. What each component does here:
 | `proc` | optional report preview server, started/stopped managed |
 | `learn` | lessons captured during runs, digest read at the start of the next |
 
-The three scripts follow the contract of steer's generated
+The three domain scripts follow the contract of steer's generated
 `scripts/example.py`: single JSON envelope on stdout, diagnostics on
-stderr, graceful fallback when the steer library isn't importable.
+stderr. They import steer's library helpers (`Store`, `Secrets`,
+`print_envelope`) from the bundled runtime sitting next to them, with a
+graceful fallback if it's missing.
 
 Try it on any repo:
 

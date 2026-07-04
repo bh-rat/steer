@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Post the report summary to the user's webhook.
 
-The webhook URL is a credential: it lives in `steer secrets`, never in
-this skill directory. Missing secret → a "needs_input" envelope whose
-message tells the agent exactly what to ask the human to run.
+The webhook URL is a credential: it lives in steer's secrets store
+(via the bundled runtime next to this script), never in this skill
+directory. Missing secret → a "needs_input" envelope whose message
+tells the agent exactly what to ask the human to run.
 """
 import argparse
 import json
@@ -36,24 +37,27 @@ def main() -> int:
                         help="Print the payload size instead of posting")
     args = parser.parse_args()
 
+    runtime = Path(__file__).resolve().with_name("steer.py")
     report = Path("out/health/REPORT.md")
     if not report.is_file():
         return _envelope("error", "No report to share",
-                         errors=["Run the flow first: steer flow status"])
+                         errors=[f"Run the flow first: python3 {runtime} "
+                                 f"flow status"])
 
     try:
         from steer import Secrets
     except ImportError:
-        return _envelope("error", "steer is not installed",
-                         errors=["Run: uv tool install steer-ai"])
+        return _envelope("error", "The skill's bundled runtime is missing",
+                         errors=[f"Expected {runtime}; regenerate it: "
+                                 f"steer bundle"])
 
     url = Secrets(SKILL).get(KEY)
     if url is None:
         return _envelope(
             "needs_input",
             f"{KEY} is not set",
-            errors=[f"Ask the user to run: steer secrets set {KEY} "
-                    f"--skill {SKILL}"],
+            errors=[f"Ask the user to run: python3 {runtime} "
+                    f"secrets set {KEY}"],
         )
 
     summary = report.read_text(encoding="utf-8").split("## Inventory")[0]

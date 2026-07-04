@@ -16,10 +16,15 @@ Runtime (library or CLI, usable from SKILL.md with no code):
     from steer.context import gather
     from steer.output import print_envelope
 
+Skills scaffolded with components carry the runtime with them: `steer
+new` writes a self-contained scripts/steer.py holding exactly the chosen
+components (see vendor.py), so running such a skill needs Python, not a
+steer install.
+
 Steer is zero-dependency: Python stdlib only.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .flow import (
     Directive,

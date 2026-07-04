@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from .output import CLI_HINT
 from .paths import skill_data_dir
 
 ENV = "env"
@@ -53,7 +54,7 @@ def remediation_message(skill: str, key: str, hint: Optional[str] = None) -> str
     lines = [
         f"Secret '{key}' is not set for skill '{skill}'.",
         "Ask the user to provide it, then store it with:",
-        f"  steer secrets set {key} --skill {skill}",
+        f"  {CLI_HINT} secrets set {key} --skill {skill}",
         f"(or export {key}=... in the environment)",
     ]
     if hint:

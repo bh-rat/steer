@@ -41,6 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .output import CLI_HINT
 from .paths import skill_data_dir
 
 KINDS = ("correction", "failure", "success", "preference", "workaround", "note")
@@ -306,8 +307,8 @@ class Learnings:
         """The bounded markdown the agent reads at the start of a run."""
         ranked = self.lessons()
         if not ranked:
-            return ("(no lessons recorded for this skill yet; capture them "
-                    "as you work: steer learn note \"...\")")
+            return (f"(no lessons recorded for this skill yet; capture them "
+                    f"as you work: {CLI_HINT} learn note \"...\")")
 
         lines = [f"## Lessons from previous runs ({self.skill})"]
         shown = 0
@@ -328,9 +329,10 @@ class Learnings:
             shown += 1
         remaining = len(ranked) - shown
         if remaining > 0:
-            lines.append(f"- …and {remaining} more: steer learn review")
+            lines.append(f"- …and {remaining} more: {CLI_HINT} learn review")
         lines.append(
-            "(helped? steer learn confirm <id> · wrong? steer learn dispute <id>)"
+            f"(helped? {CLI_HINT} learn confirm <id> · "
+            f"wrong? {CLI_HINT} learn dispute <id>)"
         )
         return "\n".join(lines)
 
@@ -407,7 +409,7 @@ class Learnings:
                 lines.append(line)
             if limit and len(entries) > limit:
                 lines.append(f"- …and {len(entries) - limit} more "
-                             f"(steer learn review --all)")
+                             f"({CLI_HINT} learn review --all)")
         self.mirror_path().write_text("\n".join(lines) + "\n", encoding="utf-8")
         return self.mirror_path()
 
@@ -468,7 +470,26 @@ _CORRECTION_PATTERNS = [
                r"|use .{1,40} instead|not .{1,40}, use)\b", re.I),
 ]
 
-_CAPTURE_MARKERS = ("steer learn note", "steer learn run")
+# A capture command the agent actually RAN: matched only inside tool-use
+# inputs, because a learn-component SKILL.md quotes these commands
+# verbatim as instructions and enters the transcript when the skill
+# loads. Covers the installed spelling ("steer learn note") and a
+# bundled runtime ("... scripts/steer.py learn note") alike.
+_CAPTURE_RE = re.compile(r"steer(\.py)?[\"']?\s+learn\s+(note|run)\b")
+
+
+def _iter_tool_use_inputs(line_obj: Any):
+    """Yield the JSON-encoded input of each tool_use block in a line."""
+    if not isinstance(line_obj, dict):
+        return
+    message = (line_obj.get("message")
+               if isinstance(line_obj.get("message"), dict) else line_obj)
+    content = message.get("content")
+    if not isinstance(content, list):
+        return
+    for part in content:
+        if isinstance(part, dict) and part.get("type") == "tool_use":
+            yield json.dumps(part.get("input", {}))
 
 
 def _iter_transcript_text(line_obj: Any):
@@ -512,15 +533,16 @@ def scan_transcript(path) -> Dict[str, Any]:
         line = line.strip()
         if not line:
             continue
-        # Cheap signals that don't need full parsing
+        # Cheap signal that doesn't need full parsing
         if '"is_error": true' in line or '"is_error":true' in line:
             result["failures"] += 1
-        if any(marker in line for marker in _CAPTURE_MARKERS):
-            result["captured"] = True
         try:
             obj = json.loads(line)
         except ValueError:
             continue
+        for tool_input in _iter_tool_use_inputs(obj):
+            if _CAPTURE_RE.search(tool_input):
+                result["captured"] = True
         for role, text in _iter_transcript_text(obj):
             if role != "user":
                 continue
@@ -558,10 +580,10 @@ def reflect(hook_input: Dict[str, Any], skill: str,
         f"steer learn (skill '{skill}'): this session had "
         f"{' and '.join(observed)}, and no lessons were recorded. "
         f"Before finishing:\n"
-        f"1. For each durable, reusable lesson run: steer learn note "
+        f"1. For each durable, reusable lesson run: {CLI_HINT} learn note "
         f"\"<one imperative rule>\" --kind correction --skill {skill} "
         f"(skip one-off trivia; never include secrets)\n"
-        f"2. Record the outcome: steer learn run ok --skill {skill} "
+        f"2. Record the outcome: {CLI_HINT} learn run ok --skill {skill} "
         f"(or 'failed')\n"
         f"Then finish. If nothing is durable, just record the run outcome."
     )

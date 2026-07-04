@@ -11,7 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
-from . import frontmatter
+from .frontmatter import parse as parse_frontmatter
+from .frontmatter import split_document
 from .paths import SKILL_FILE, skill_search_roots
 
 # Fields defined by the open Agent Skills spec (agentskills.io).
@@ -75,12 +76,12 @@ class Skill:
             raise SkillNotFound(f"No {SKILL_FILE} found in {p}")
 
         content = skill_md.read_text(encoding="utf-8")
-        fm_text, body = frontmatter.split_document(content)
+        fm_text, body = split_document(content)
         if fm_text is None:
             return cls(path=p.resolve(), frontmatter={}, body=body,
                        problems=["missing frontmatter block (--- ... ---)"],
                        has_frontmatter=False)
-        data, problems = frontmatter.parse(fm_text)
+        data, problems = parse_frontmatter(fm_text)
         return cls(path=p.resolve(), frontmatter=data, body=body, problems=problems)
 
     def files(self) -> List[Path]:

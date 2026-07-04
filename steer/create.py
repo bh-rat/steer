@@ -7,6 +7,11 @@ focused description shape, a context-gathering step 0, an agent↔human
 credential handoff, flow enforcement prose backed by actual gating, and
 scripts that follow the agentic-interface guidance (non-interactive,
 JSON envelope on stdout, diagnostics on stderr).
+
+Skills that use components get a bundled runtime (scripts/steer.py, see
+vendor.py) holding exactly those components, and their SKILL.md invokes
+it as `python3 scripts/steer.py ...`: running the skill needs Python,
+not steer.
 """
 
 import re
@@ -15,8 +20,13 @@ from typing import Iterable, List, Optional, Set
 
 from . import frontmatter
 from .scaffold import FileSpec, ScaffoldResult, scaffold_project
+from .vendor import COMPONENT_MODULES, RUNTIME_REL_PATH, generate, normalize_components
 
-COMPONENTS = ("secrets", "store", "context", "flow", "proc", "learn")
+COMPONENTS = tuple(COMPONENT_MODULES)
+
+# The templates below spell out vendor.RUNTIME_PROG ("python3
+# scripts/steer.py") literally so they read as the prose an author will
+# edit; test_vendor ties the two together and fails if they drift.
 
 _DESCRIPTION_PLACEHOLDER = (
     "TODO: One sentence on what this skill does. "
@@ -77,28 +87,40 @@ def _skill_md(name: str, description: Optional[str], components: Set[str],
         "the user gets.\n"
     )
 
+    if components:
+        parts.append(
+            "\nThis skill bundles its own steer runtime at "
+            "`scripts/steer.py`; the\ncommands below invoke it with "
+            "`python3` and need nothing installed.\nPaths are relative to "
+            "this skill's directory: when your working\ndirectory is "
+            "elsewhere (it usually is), use the skill's full path\n"
+            "(`python3 <path-to-this-skill>/scripts/steer.py ...`).\n"
+        )
+
     setup_lines: List[str] = []
     if "context" in components:
         setup_lines.append(
-            "1. **Ground yourself.** Run `steer context` and read the snapshot "
-            "before doing anything else; it tells you the platform, project "
-            "type, git state, and which tools exist here."
+            "1. **Ground yourself.** Run `python3 scripts/steer.py context` "
+            "and read the snapshot before doing anything else; it tells you "
+            "the platform, project type, git state, and which tools exist "
+            "here."
         )
     if "learn" in components:
         setup_lines.append(
             f"{len(setup_lines) + 1}. **Apply past lessons.** Run "
-            f"`steer learn show --skill {name}` and follow what it says; "
+            f"`python3 scripts/steer.py learn show` and follow what it says; "
             f"those lessons came from real previous runs."
         )
     if "secrets" in components:
         keys = secret_keys or [f"{name.upper().replace('-', '_')}_API_KEY"]
         if len(keys) == 1:
-            check_cmds = f"`steer secrets check {keys[0]} --skill {name}`"
-            set_cmd = f"`steer secrets set {keys[0]} --skill {name}`"
+            check_cmds = f"`python3 scripts/steer.py secrets check {keys[0]}`"
+            set_cmd = f"`python3 scripts/steer.py secrets set {keys[0]}`"
         else:
             check_cmds = ", ".join(
-                f"`steer secrets check {key} --skill {name}`" for key in keys)
-            set_cmd = f"`steer secrets set <KEY> --skill {name}`"
+                f"`python3 scripts/steer.py secrets check {key}`"
+                for key in keys)
+            set_cmd = "`python3 scripts/steer.py secrets set <KEY>`"
         setup_lines.append(
             f"{len(setup_lines) + 1}. **Check credentials.** Run "
             f"{check_cmds}. If one is missing, ask the user to run "
@@ -116,15 +138,16 @@ This skill has an enforced flow: steps verify themselves against
 reality, and you cannot skip ahead.
 
 1. Announce: "Working through the {name} flow."
-2. Run `steer flow status` (in the workspace) to see progress and the
-   current step.
+2. Run `python3 scripts/steer.py flow status` (in the workspace) to see
+   progress and the current step.
 3. Do what the directive says. Steps with a verify condition complete
    automatically once reality matches; for mandate steps, mark completion
-   with `steer flow done <step-id>`.
-4. Run `steer flow next` and repeat until it reports all steps complete.
+   with `python3 scripts/steer.py flow done <step-id>`.
+4. Run `python3 scripts/steer.py flow next` and repeat until it reports
+   all steps complete.
 
-Do NOT claim the work is done while `steer flow status` shows incomplete
-steps. The flow is defined in `flow.toml`.
+Do NOT claim the work is done while `python3 scripts/steer.py flow
+status` shows incomplete steps. The flow is defined in `flow.toml`.
 """)
     else:
         parts.append("""
@@ -135,15 +158,15 @@ say explicitly whether to execute it ("Run: ...") or read it ("See: ...").
 """)
 
     if "store" in components:
-        parts.append(f"""
+        parts.append("""
 ## Memory
 
-This skill persists data between runs with `steer store` (per-skill
-SQLite). Examples:
+This skill persists data between runs with the bundled `store` command
+(per-skill SQLite). Examples:
 
-    steer store put last_run '"2026-06-11"' --skill {name}
-    steer store get last_run --skill {name}
-    steer store insert runs '{{"file": "report.pdf", "ok": true}}' --skill {name}
+    python3 scripts/steer.py store put last_run '"2026-06-11"'
+    python3 scripts/steer.py store get last_run
+    python3 scripts/steer.py store insert runs '{"file": "report.pdf", "ok": true}'
 
 Use `--scope workspace` for state that belongs to this project rather
 than the user.
@@ -153,21 +176,22 @@ than the user.
         parts.append("""
 ## Background processes
 
-Start helpers through steer so nothing leaks or zombies:
+Start helpers through the bundled runtime so nothing leaks or zombies:
 
-    steer proc start dev --ready-port 5173 -- npm run dev
-    steer proc status dev
-    steer proc stop dev      # always stop what you started
+    python3 scripts/steer.py proc start dev --ready-port 5173 -- npm run dev
+    python3 scripts/steer.py proc status dev
+    python3 scripts/steer.py proc stop dev      # always stop what you started
 """)
 
     if "learn" in components:
         auto_note = ""
         if auto_learn:
             auto_note = (
-                "\nAuto-learning is on (Claude Code): a Stop hook scans the "
-                "session for corrections and failures and will prompt you to "
-                "distill lessons if you forget. Other agents: follow the "
-                "instructions below manually.\n"
+                "\nAuto-learning is on (Claude Code, needs the steer CLI "
+                "installed): a Stop hook scans the session for corrections "
+                "and failures and will prompt you to distill lessons if you "
+                "forget. Other agents: follow the instructions below "
+                "manually.\n"
             )
         parts.append(f"""
 ## Learning
@@ -176,13 +200,13 @@ This skill improves with use. As you work:
 
 - The moment the user corrects you, or something fails and then works a
   different way, capture it:
-  `steer learn note "<one imperative rule>" --kind correction --skill {name}`
+  `python3 scripts/steer.py learn note "<one imperative rule>" --kind correction`
   Lessons are atomic rules ("Use X not Y when Z"), never secrets.
-- When a lesson from `steer learn show --skill {name}` helped, run
-  `steer learn confirm <id> --skill {name}`; when one was wrong,
-  `steer learn dispute <id> --skill {name}`.
+- When a lesson from `python3 scripts/steer.py learn show` helped, run
+  `python3 scripts/steer.py learn confirm <id>`; when one was wrong,
+  `python3 scripts/steer.py learn dispute <id>`.
 - Before finishing, record the outcome:
-  `steer learn run ok --skill {name}` (or `failed` with `--note`).
+  `python3 scripts/steer.py learn run ok` (or `failed` with `--note`).
 
 If a `learnings.md` exists in this skill, read it too; those are
 promoted lessons that shipped with the skill.
@@ -216,8 +240,9 @@ only when that branch is hit:
 
 
 _FLOW_HEADER = """\
-# Declarative flow for this skill. The agent drives it with:
-#   steer flow status | next | done <id>   (run inside the workspace)
+# Declarative flow for this skill. The agent drives it with the bundled
+# runtime, run inside the workspace:
+#   python3 scripts/steer.py flow status | next | done <id>
 #
 # A step with [steps.verify] completes automatically when the condition
 # holds (file_exists, dir_exists, glob, command, env). A step without
@@ -238,7 +263,7 @@ file_exists = "out/config.json"
 [[steps]]
 id = "review"
 description = "TODO: a judgment step the agent confirms explicitly"
-directive = "TODO: what to check before marking done with `steer flow done review`"
+directive = "TODO: what to check before marking done with `python3 {{skill_dir}}/scripts/steer.py flow done review`"
 requires = ["prepare"]
 """
 
@@ -289,22 +314,13 @@ def main() -> int:
     parser.add_argument("--name", default="world", help="Who to greet")
     args = parser.parse_args()
 
-    try:
-        from steer.output import print_envelope
-    except ImportError:
-        print(json.dumps({
-            "status": "error",
-            "summary": "steer is not installed",
-            "errors": ["Run: pip install steer-ai  (or: uv tool install steer-ai)"],
-        }))
-        return 1
-
     # ... do the real work here ...
-    return print_envelope(
-        "ok",
-        f"Greeted {args.name}",
-        data={"name": args.name},
-    )
+    print(json.dumps({
+        "status": "ok",
+        "summary": f"Greeted {args.name}",
+        "data": {"name": args.name},
+    }, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
@@ -368,12 +384,8 @@ def create_skill(name: str, parent_dir: str = ".",
         chosen.add("secrets")
     if flow_steps:
         chosen.add("flow")
-    unknown = chosen - set(COMPONENTS)
-    if unknown:
-        raise ValueError(
-            f"Unknown component(s): {', '.join(sorted(unknown))} "
-            f"(available: {', '.join(COMPONENTS)})"
-        )
+    if chosen:
+        normalize_components(chosen)  # unknown components raise here
 
     target = Path(parent_dir).expanduser() / name
     files = [FileSpec(
@@ -386,6 +398,9 @@ def create_skill(name: str, parent_dir: str = ".",
     if "flow" in chosen:
         files.append(FileSpec("flow.toml", _flow_toml(name, flow_steps or None),
                               "declarative flow definition"))
+    if chosen:
+        files.append(FileSpec(RUNTIME_REL_PATH.as_posix(), generate(chosen),
+                              "bundled steer runtime (self-contained)"))
     dirs: List[str] = []
     if scripts:
         files.append(FileSpec("scripts/example.py", _EXAMPLE_SCRIPT,
@@ -395,8 +410,9 @@ def create_skill(name: str, parent_dir: str = ".",
 
     result = scaffold_project(str(target), files=files, dirs=dirs)
 
-    if scripts:
-        example = target / "scripts" / "example.py"
-        if example.exists():
-            example.chmod(example.stat().st_mode | 0o755)
+    for spec in files:
+        if spec.path.startswith("scripts/"):
+            script = target / spec.path
+            if script.exists():
+                script.chmod(script.stat().st_mode | 0o755)
     return result

@@ -1,6 +1,6 @@
 [project]
 name = "steer-ai"
-version = "0.1.0"
+version = "0.1.1"
 description = "The framework for building Agent Skills: scaffolding, validation, packaging, and runtime components (secrets, storage, context, flows, processes, learning) for SKILL.md"
 readme = "README.md"
 requires-python = ">=3.11"
