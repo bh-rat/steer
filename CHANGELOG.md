@@ -4,6 +4,18 @@ All notable changes to steer are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/) (pre-1.0: minor bumps may break).
 
+## Unreleased
+
+### Added
+
+- `skills/building-skills`: steer's own skill for building skills. It
+  runs the whole lifecycle behind an enforced flow: design (trigger,
+  components, structure), scaffold with `steer new`, write, a gate that
+  holds until no TODO remains and `steer validate` passes, then install
+  and a real run. Ships reference guides on choosing components, mining
+  source material, writing bodies, and improving existing skills.
+  Install: `steer install skills/building-skills --user`.
+
 ## 0.1.1: skills carry their own runtime
 
 ### Added

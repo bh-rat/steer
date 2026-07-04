@@ -103,6 +103,20 @@ preview server, lesson capture), and
 counterpoint. Their READMEs show exactly which lines steer generated and
 which the author filled in.
 
+## The skill that builds skills
+
+The authoring workflow above also ships as a skill of its own:
+[`skills/building-skills`](skills/building-skills). Installed, it turns
+"build me a skill" into the full lifecycle: it designs the trigger and
+components with you, scaffolds with `steer new`, and works behind an
+enforced flow that refuses to finish while TODOs remain, `steer
+validate` fails, or the new skill has never survived a real run. Build
+lessons accumulate across uses via `steer learn`.
+
+```bash
+steer install skills/building-skills --user
+```
+
 ## The components
 
 ### `steer secrets`: credentials that never live in the skill

@@ -1,0 +1,44 @@
+# The build flow. Drive it with this skill's bundled runtime:
+#   python3 <this-skill-dir>/scripts/steer.py flow status | next | done <id>  --workspace <new-skill-dir>
+# The workspace is the NEW skill's directory, not this skill's.
+
+name = "building-skills"
+
+[[steps]]
+id = "design"
+description = "Trigger, components, structure, and the exact steer new command, agreed with the user"
+directive = "Triage the user's source material first: read {skill_dir}/references/source-material.md when building from a document, an API, or the conversation. Decide the trigger (model- or user-invoked), the components ({skill_dir}/references/choosing-components.md), the body/references split, and what becomes scripts or flow steps. Compose the exact steer new command and show it to the user with the chosen name and install scope; mark this step done when they agree."
+
+[[steps]]
+id = "scaffold"
+description = "SKILL.md exists in the workspace"
+directive = "Run the agreed steer new command with --dir set to this workspace's parent directory, then read every generated file except scripts/steer.py (the bundled runtime; generated, never edited) before editing any of them."
+requires = ["design"]
+
+[steps.verify]
+file_exists = "SKILL.md"
+
+[[steps]]
+id = "write"
+description = "No TODO placeholder remains in the workspace"
+directive = "Read {skill_dir}/references/writing-the-body.md, then replace every TODO in the new skill: the description first, then body steps, then flow.toml directives and verify conditions. Prune anything that does not change the agent's behavior."
+requires = ["scaffold"]
+
+[steps.verify]
+command = "! grep -rIq 'TODO:' --exclude-dir=.steer --exclude=steer.py ."
+
+[[steps]]
+id = "validate"
+description = "steer validate passes in the workspace"
+directive = "Run steer validate . and fix findings until it reports clean. Errors hold this gate; treat warnings and info as errors too unless the user accepts one, and say so in the handoff."
+command = "steer validate ."
+requires = ["write"]
+
+[steps.verify]
+command = "steer validate ."
+
+[[steps]]
+id = "exercise"
+description = "The skill is installed and has survived one real run"
+directive = "Install with steer install . (--user for user scope, --force when replacing), then run the new skill once on a real task in a fresh context: confirm it triggers from a natural request and produces what the user asked for. Fix what the run exposes; the validate gate must stay green. Then wrap up: capture lessons with python3 {skill_dir}/scripts/steer.py learn note, record the outcome with python3 {skill_dir}/scripts/steer.py learn run ok (or failed), and offer steer package . when the user wants a zip for claude.ai or the API."
+requires = ["validate"]
