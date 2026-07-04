@@ -264,11 +264,12 @@ SDK, PyPI release.
 
 ## Docs & contributing
 
-Full documentation lives in [`docs/`](docs/) (introduction, quickstart, a
-page per component, and the authoring guide, including the checklist for
-writing skill bodies: trigger, structure, steering, pruning). Contributions
-are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go to
-[SECURITY.md](SECURITY.md).
+Full documentation lives in [`docs/`](docs/), a Fumadocs site whose content
+is under [`docs/content/docs/`](docs/content/docs/) (introduction,
+quickstart, a page per component, and the authoring guide, including the
+checklist for writing skill bodies: trigger, structure, steering, pruning).
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Security
+reports go to [SECURITY.md](SECURITY.md).
 
 ## License
 
