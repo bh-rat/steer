@@ -59,7 +59,7 @@ jobs:
           steer validate skills/converting-skills
           steer validate examples/repo-health
           steer validate examples/commit-message
-          steer validate examples/conversions/webapp-testing
-          steer validate examples/conversions/systematic-debugging
-          steer validate examples/conversions/vercel-cli-with-tokens
-          steer validate examples/conversions/humanizer
+          steer validate examples/rebuilds/webapp-testing
+          steer validate examples/rebuilds/systematic-debugging
+          steer validate examples/rebuilds/vercel-cli-with-tokens
+          steer validate examples/rebuilds/humanizer

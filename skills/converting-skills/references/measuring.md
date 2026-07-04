@@ -8,7 +8,7 @@ should say so.
 ## Static (always)
 
 1. **Validation both sides.** `steer validate <dir> --json` on the
-   original and the rebuild. Expect famous originals to be clean or
+   original and the rebuild. Expect well-built originals to be clean or
    near-clean; the rebuild must be clean. Count errors, warnings,
    info.
 2. **Body context cost both sides.** Token estimate of the SKILL.md

@@ -31,7 +31,7 @@ installed `steer` CLI, checked below.
 
 ## Ground rules
 
-- **The prose is the payload.** A famous skill's rules, red-flag
+- **The prose is the payload.** The source skill's rules, red-flag
   lists, and phrasing are tuned content; convert the machinery around
   them and keep the voice verbatim.
 - **Rebuild exactly.** Same name, same description triggers, same
@@ -108,7 +108,7 @@ Load these only when that step of the work is hit:
 
 ## Gotchas
 
-- The famous originals validate CLEAN. Do not promise "steer will find
+- Well-built originals validate CLEAN. Do not promise "steer will find
   errors"; the wins live in failure behavior, enforcement, secret
   hygiene, and context economy. Measure, then claim.
 - Verify conditions need reality to check. Find the artifacts the
@@ -122,5 +122,6 @@ Load these only when that step of the work is hit:
   persistence through the secrets component, and say so in NOTICE.md.
 - Do not restate flow directives in the body or vice versa; directives
   point at body sections, one source of truth.
-- Remove scaffold directories the rebuild does not use (`assets/`,
-  `scripts/`) before validating.
+- Remove scaffold directories the rebuild does not use (an empty
+  `assets/` or `references/`) before validating; `scripts/` stays, it
+  holds the bundled runtime.

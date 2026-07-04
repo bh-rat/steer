@@ -41,7 +41,7 @@ check, component map), scaffold with `steer new`, a faithful port that
 keeps the original's voice and records every delta in a NOTICE.md, a
 live `steer validate` gate, and a measured comparison against the
 original. Its `references/` distill the playbook from the four real
-conversions in [`examples/conversions`](../examples/conversions); the
+conversions in [`examples/rebuilds`](../examples/rebuilds); the
 humanizer rebuild there was produced by this skill end to end.
 
 Like building-skills it takes only flow and learn, runs them from its

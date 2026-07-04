@@ -1,6 +1,6 @@
-# Rebuilding famous skills on steer: what actually changes
+# Rebuilding sample skills on steer: what actually changes
 
-Four famous open Agent Skills, rebuilt on steer with their content and
+Four sample open Agent Skills, rebuilt on steer with their content and
 behavior preserved, then measured against the originals. Every number
 below comes from deterministic checks (no LLM judging); the method for
 each is described at the end.
@@ -12,7 +12,7 @@ each is described at the end.
 | `vercel-cli-with-tokens` | vercel-labs/agent-skills (MIT per README; repo ships no LICENSE file) | credentials, store, context |
 | `humanizer` | blader/humanizer (MIT) | flow with output gates, store, context economy |
 
-The originals are famous for a reason: all four pass `steer validate`
+The originals are well built: all four pass `steer validate`
 with zero errors. The differences live in runtime behavior, failure
 modes, and context economy, which is exactly where published skill
 benchmarks are thinnest (see "How this relates to published testing").

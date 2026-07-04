@@ -13,7 +13,7 @@ All notable changes to steer are documented here. The format follows
   flow (license triage, component mapping, scaffold, faithful port,
   live validation, measured comparison), with the playbook in its
   references. Install: `steer install skills/converting-skills --user`.
-- `examples/conversions`: four widely used open skills rebuilt on
+- `examples/rebuilds`: four sample open skills rebuilt on
   steer with content preserved, each under its original license with
   a NOTICE.md of deltas and measured results (COMPARISON.md).
 - `skills/building-skills`: steer's own skill for building skills. It

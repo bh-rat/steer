@@ -1,6 +1,6 @@
-# Conversions: famous skills, rebuilt on steer
+# Rebuilds: sample skills on steer
 
-An experiment: take widely used open skills, rebuild each on steer
+An experiment: take a sample of existing open skills, rebuild each on steer
 with `steer new` plus the components it hand-rolls, preserve the
 original's content and voice, and measure what changes. Results with
 numbers live in [COMPARISON.md](COMPARISON.md); each skill's NOTICE.md
@@ -23,6 +23,6 @@ the installed skills run with plain `python3`. Each is installable
 as-is:
 
 ```bash
-steer validate examples/conversions/webapp-testing
-steer install examples/conversions/webapp-testing
+steer validate examples/rebuilds/webapp-testing
+steer install examples/rebuilds/webapp-testing
 ```
