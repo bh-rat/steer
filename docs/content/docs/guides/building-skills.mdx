@@ -1,0 +1,76 @@
+---
+title: The skill that builds skills
+description: Install building-skills and your agent runs the authoring workflow behind gates it cannot talk past.
+---
+
+The [authoring guide](/guides/authoring) is written for you; this page
+is about handing the job to your agent. `building-skills` is a
+first-party skill that ships in the steer repo: installed, it turns
+"build me a skill for X" into the full lifecycle, and it refuses to
+call the build done until the result validates and has survived a real
+run.
+
+```bash
+git clone https://github.com/bh-rat/steer && cd steer
+steer install skills/building-skills --user   # project scope: drop --user
+```
+
+## What a build looks like
+
+The skill works behind its own `flow.toml`, the same enforcement it
+gives the skills it builds. Five steps; the three in the middle
+complete only against reality:
+
+| Step | Completes when |
+|---|---|
+| design | you approve the composed `steer new` command (mandate step) |
+| scaffold | SKILL.md exists in the new skill's directory |
+| write | no TODO placeholder remains anywhere in the workspace |
+| validate | `steer validate` passes there, live, not once |
+| exercise | the skill is installed and has survived one real run (mandate step) |
+
+Design is an interview against real material, never generic knowledge:
+the document or API you pointed at, the conversation so far, or your
+answers. It ends in four decisions (who triggers the skill, which
+components it needs, what loads when, how much freedom the agent gets)
+compiled into one `steer new` command that the agent shows you before
+running.
+
+The verified gates are the point. An agent cannot declare a half-filled
+scaffold finished, because "done" is a grep and an exit code, not a
+claim; and if a later edit breaks validation during the exercise step,
+the gate reopens.
+
+## It learns the job
+
+The skill uses the [learn component](/components/learn) on itself:
+corrections you make during a build are captured as lessons, the digest
+is read at the start of the next build, and keepers can be promoted
+into the shipped skill. It drives its own flow and lessons through its
+bundled `scripts/steer.py`; the installed CLI stays required because
+the work itself is `steer new`, `steer validate`, and `steer install`.
+
+## Improving an existing skill
+
+"Review this skill" and "why does this skill never fire" take a second
+path that skips the build flow: validation triage, body-budget and
+description checks, lesson harvesting, and swapping hand-rolled
+sections for components. The playbook ships as a reference inside the
+skill.
+
+## What is in it
+
+```text
+skills/building-skills/
+├── SKILL.md
+├── flow.toml            # design → scaffold → write → validate → exercise
+├── scripts/steer.py     # bundled runtime: flow + learn
+└── references/
+    ├── choosing-components.md   # need → component → flag, and when to skip
+    ├── source-material.md      # documents, APIs, conversations → material
+    ├── writing-the-body.md     # descriptions, steps, flows, scripts
+    └── improving-a-skill.md    # the review path
+```
+
+It takes only the components it needs (flow and learn): design decision
+two, applied to itself.
