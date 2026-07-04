@@ -58,6 +58,15 @@ one reference. `--user-invoked` sets `disable-model-invocation: true` (you
 call it; it never auto-triggers), and the type-picking cheatsheet lives
 behind a context pointer in `references/`, loaded only when needed.
 
+## conversions/: famous skills, rebuilt and measured
+
+The two skills above were written from scratch to show what steer
+generates. [`conversions/`](conversions) is the other direction:
+widely used third-party skills rebuilt on steer with their content
+preserved, each under its original license (see the NOTICE.md in each
+folder), with a deterministic comparison harness and measured results
+in [`conversions/COMPARISON.md`](conversions/COMPARISON.md).
+
 ## Verified end-to-end
 
 `repo-health` has been executed by an agent in a sandboxed workspace,

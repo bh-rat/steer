@@ -14,15 +14,15 @@ records its origin, license, and the exact deltas.
 | [`humanizer`](humanizer) | blader/humanizer | flow, store, learn |
 
 The humanizer conversion was performed by the `converting-skills`
-skill in [`skills/`](../skills), driving its enforced triage, scaffold,
+skill in [`skills/`](../../skills), driving its enforced triage, scaffold,
 port, verify, compare flow; the conversion playbook distilled from all
 four ports lives in that skill's `references/`.
 
 Each is installable as-is:
 
 ```bash
-steer validate conversions/webapp-testing
-steer install conversions/webapp-testing
+steer validate examples/conversions/webapp-testing
+steer install examples/conversions/webapp-testing
 ```
 
 The comparison harness under [`compare/`](compare) is self-contained
