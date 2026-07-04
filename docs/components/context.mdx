@@ -1,0 +1,75 @@
+---
+title: Context
+description: One command that answers "where am I, what is this project, what can I use?"
+---
+
+Serious skills start with a hand-rolled "Step 0: figure out the situation":
+git probes, marker-file checks, `command -v` ladders, per-host branching
+("If on Claude Code… if on claude.ai…"). Across the skills we analyzed it
+was the single most duplicated piece of code; some skills vendor the same
+detection shim in three separate places.
+
+`steer context` is that preamble as one command.
+
+## CLI
+
+```bash
+steer context                          # markdown, for the agent to read
+steer context --json                   # for scripts
+steer context --only git,project       # subset of sections
+steer context --tools terraform,helm   # probe extra binaries
+steer context --workspace ~/work/acme  # inspect another directory
+```
+
+```text
+## Context snapshot
+- **System**: Darwin arm64, Python 3.13.5, cwd `/Users/jane/work/acme`
+- **Host agent**: claude-code (non-interactive)
+- **Git**: branch `main`, 3 dirty files (1 untracked)
+  - `a1b2c3d fix payment retry`
+- **Project**: node, python
+  - package managers: pnpm, uv
+  - also present: docker, github-actions
+- **Tools on PATH**: git, gh, docker, node, pnpm, python3, uv, jq, rg
+  - missing: cargo, go, kubectl, terraform
+- **Env**: TERM=xterm-256color, LANG=en_US.UTF-8
+```
+
+## Sections
+
+| Section | Contents |
+|---|---|
+| `system` | OS, arch, Python version, cwd |
+| `agent` | Host agent detection (Claude Code, Codex, Cursor, Gemini CLI, …) via env markers; CI flag; TTY flag |
+| `git` | In a repo? branch, dirty/untracked counts, last 3 commits, remotes, linked-worktree detection |
+| `project` | Types from manifests (node/python/rust/go/…), package managers from lockfiles, extras (docker, CI, Makefile, SKILL.md) |
+| `tools` | Which of ~20 common binaries exist on PATH (+ any you ask for) |
+| `env` | A small allowlist (CI, TERM, LANG, SHELL, VIRTUAL_ENV, NODE_ENV); steer never dumps the environment |
+
+## Python
+
+```python
+from steer.context import gather, to_markdown
+
+snapshot = gather(workspace=".", only=["git", "project"])
+if "uv" not in gather(only=["tools"])["tools"]["available"]:
+    ...
+print(to_markdown(snapshot))
+```
+
+## In a SKILL.md
+
+`steer new --with context` generates:
+
+```text
+1. **Ground yourself.** Run `steer context` and read the snapshot before
+   doing anything else; it tells you the platform, project type, git
+   state, and which tools exist here.
+```
+
+In Claude Code you can go further and inject it before the model even
+reads the skill body, with dynamic context injection:
+
+```text
+!`steer context`
+```

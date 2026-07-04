@@ -1,0 +1,78 @@
+---
+title: Proc
+description: Background processes that start ready and never zombie.
+---
+
+Skills that need a dev server or long-running helper all duplicate the same
+~250 lines of fragile lifecycle bash: spawn with `nohup`, poll a port,
+write a PID file, grep logs for "started", remember TERM-then-KILL, work
+around process reapers. Across the skills we analyzed, this was the
+buggiest code they carried.
+
+`steer proc` owns that lifecycle. Bookkeeping lives in
+`<workspace>/.steer/proc/<name>/`: `meta.json` (pid, command, readiness)
+and the captured `log`. `start --cwd <dir>` sets the working directory.
+
+## CLI
+
+```bash
+steer proc start web --ready-port 5173 -- npm run dev
+steer proc start api --ready-log "Listening on" --timeout 60 -- ./server
+steer proc status [web] [--json]
+steer proc logs web -n 100
+steer proc stop web
+```
+
+Everything after `--` is the command. Readiness:
+
+- `--ready-port N`: wait until the port accepts connections
+- `--ready-log TEXT`: wait until the text appears in the captured log
+- neither: steer checks that the process survives its first half-second
+
+If the process exits immediately or misses the readiness deadline, steer
+stops it and reports the log tail, so the agent sees *why* instead of a
+silent zombie.
+
+```text
+✓ Started 'web' (pid 73901) (port 5173 open)
+  log: /work/acme/.steer/proc/web/log
+  stop with: steer proc stop web
+```
+
+## Guarantees
+
+- **Detached**: processes run in their own session and survive the shell
+  that started them.
+- **Stop kills the group**: `npm run dev` → node children die too;
+  TERM → wait → KILL escalation.
+- **No double starts**: starting a running name is refused with the
+  existing pid.
+- **Recycled-PID guard**: status compares the running command against what
+  was started; a reused pid reads as stopped, and steer only ever signals
+  processes it started.
+- **Logs captured**: stdout+stderr land in the log file; `steer proc logs`
+  tails it.
+
+## Python
+
+```python
+from steer.proc import start, status, logs, stop, ProcError
+
+info = start("web", ["npm", "run", "dev"], workspace=".", ready_port=5173)
+try:
+    ...
+finally:
+    stop("web", workspace=".")
+```
+
+## In a SKILL.md
+
+`steer new --with proc` generates:
+
+```text
+Start helpers through steer so nothing leaks or zombies:
+
+    steer proc start dev --ready-port 5173 -- npm run dev
+    steer proc status dev
+    steer proc stop dev      # always stop what you started
+```

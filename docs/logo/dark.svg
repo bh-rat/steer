@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 32" fill="none">
+  <!-- Steering wheel icon -->
+  <g transform="translate(4, 2)">
+    <!-- Outer ring -->
+    <circle cx="14" cy="14" r="12" stroke="#ffffff" stroke-width="2.5" fill="none"/>
+    <!-- Center hub -->
+    <circle cx="14" cy="14" r="3" fill="#ffffff"/>
+    <!-- Spokes -->
+    <line x1="14" y1="5" x2="14" y2="11" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="6.2" y1="19.5" x2="11.2" y2="15.8" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+    <line x1="21.8" y1="19.5" x2="16.8" y2="15.8" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <!-- Text -->
+  <text x="38" y="22" font-family="system-ui, -apple-system, sans-serif" font-weight="600" font-size="18" fill="#ffffff">steer</text>
+</svg>

@@ -1,0 +1,88 @@
+---
+title: Introduction
+description: The framework for building Agent Skills.
+---
+
+[Agent Skills](https://agentskills.io) are the open standard for packaging
+agent capabilities: a folder with a `SKILL.md` (frontmatter + instructions)
+plus optional `scripts/`, `references/`, and `assets/`. Around 40 agent
+products load them: Claude Code, claude.ai, OpenAI Codex, GitHub Copilot,
+Cursor, Gemini CLI, and more.
+
+The format is deliberately tiny. That's its strength, and it means skills
+ship with no batteries: the spec has no mechanism for credentials,
+persistence between runs, context gathering, multi-step enforcement, or
+managed background processes. Every serious skill hand-rolls some of these.
+Steer's components are reverse-engineered from what good skills already
+build by hand.
+
+Steer provides them as components, plus the authoring tools around the
+whole lifecycle.
+
+## Two halves
+
+<CardGroup cols={2}>
+
+<Card title="Author-time CLI" icon="hammer">
+Scaffold, validate, package, install.
+
+`steer new` generates a spec-valid skill with components wired into its
+SKILL.md. `steer validate` enforces the spec's hard rules plus hygiene
+checks the spec doesn't have. `steer package` builds an API-ready zip and
+refuses to ship credential files.
+</Card>
+
+<Card title="Runtime components" icon="battery-full">
+Batteries for running skills.
+
+Each component is both a Python library and a CLI subcommand, so a SKILL.md
+can use steer with no code at all: `steer context`, `steer secrets
+check`, `steer flow next`, `steer store get`, `steer proc start`.
+</Card>
+
+</CardGroup>
+
+## The components
+
+| Component | Replaces |
+|---|---|
+| **[secrets](/components/secrets)** | The "Credential Conundrum": env-var conventions, config files, pasted keys. Resolution: env → OS keychain → 0600 file, never inside the skill directory (skill dirs get zipped and uploaded). |
+| **[store](/components/store)** | Ad-hoc JSON scratch files in `/tmp`, dot-directories, and sibling workspaces. Per-skill SQLite, user- or workspace-scoped. |
+| **[context](/components/context)** | Hand-rolled "figure out the situation" preambles: git probes, marker-file checks, `command -v` ladders, host-agent detection. One command, markdown or JSON. |
+| **[flow](/components/flow)** | ALL-CAPS prose enforcement ("You MUST complete each phase before proceeding"). A step DAG with verify conditions; the agent cannot skip ahead. |
+| **[proc](/components/proc)** | ~250 lines of spawn / poll-port / PID-file / TERM→KILL bash that server-using skills duplicate. |
+| **[learn](/components/learn)** | Static skills that repeat the same mistakes forever. A capture → curate → promote loop: the agent records lessons as it works, steer curates them deterministically, the author promotes keepers into the shipped skill. |
+| **envelope** | Every script inventing its own status JSON. One canonical result shape (see [Authoring](/guides/authoring)). |
+
+## What a steer-built skill looks like
+
+```text
+stripe-report/
+├── SKILL.md       # generated, spec-valid, components wired in
+├── flow.toml      # declarative steps with verify conditions
+└── scripts/
+    └── example.py # JSON envelope on stdout, diagnostics on stderr
+```
+
+The generated SKILL.md instructs the agent:
+
+1. Ground yourself: `steer context`
+2. Check credentials: `steer secrets check STRIPE_REPORT_API_KEY`; if
+   missing, ask the human to run `steer secrets set ...`
+3. Follow the flow: `steer flow next`, until everything verifies complete
+
+## How steer relates to the rest of the ecosystem
+
+Steer is the author-side framework and runtime standard library. It sits
+upstream of everything else and composes with it:
+
+|  | What it owns | Relation |
+|---|---|---|
+| Conversational skill generators | Authoring content inside an agent session | They write the content; steer supplies the deterministic tooling and the runtime their scripts can use |
+| `skills-ref` (spec repo) | Reference frontmatter validation | `steer validate` covers its checks plus references, budgets, portability, and secret hygiene |
+| `npx skills` (Vercel), Tessl, Smithery | Distribution: install, registries, lockfiles | Steer builds and validates what they distribute |
+| Methodology skill collections | Process and methodology content | Their prose enforcement is what `steer flow` turns into machinery |
+
+Steer stays zero-dependency (Python stdlib only) and targets the open
+spec first: scaffolds are portable across clients, and `steer validate`
+warns when a skill uses Claude-Code-only fields.

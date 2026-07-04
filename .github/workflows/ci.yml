@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: pytest · py${{ matrix.python }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: python -m pip install -e . pytest
+      - name: Test
+        run: python -m pytest tests/ -q
+
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check steer tests
+
+  smoke:
+    name: CLI smoke (scaffold → validate → package → install)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install .
+      - name: Lifecycle smoke
+        run: |
+          set -eux
+          steer --version
+          cd "$(mktemp -d)"
+          steer new demo-skill --description "Demo skill for CI. Use when smoke-testing steer releases." --with context,flow,store,learn --scripts
+          steer validate demo-skill
+          steer package demo-skill -o demo.zip
+          steer install demo-skill --dest installed-skills --force
+          test -f installed-skills/demo-skill/SKILL.md
+      - name: Validate bundled examples
+        run: |
+          steer validate examples/repo-health
+          steer validate examples/commit-message

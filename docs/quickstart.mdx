@@ -1,0 +1,121 @@
+---
+title: Quickstart
+description: Build, validate, and install a skill in five minutes.
+---
+
+## Install steer
+
+```bash
+uv tool install steer-ai        # installs the `steer` command
+# or: pip install steer-ai
+# latest from main: uv tool install git+https://github.com/bh-rat/steer
+steer --version
+```
+
+Python ≥ 3.11, zero dependencies.
+
+## 1. Scaffold
+
+```bash
+steer new stripe-report \
+  --description "Generates revenue reports from Stripe. Use when the user asks for revenue, MRR, or payment reporting." \
+  --with secrets,context,flow --scripts
+```
+
+```text
+Created skill at stripe-report
+  + SKILL.md
+  + flow.toml
+  + scripts/example.py
+
+Validation: clean
+```
+
+Components are opt-in: `--with secrets,store,context,flow,proc` wires the
+matching sections into the generated SKILL.md. `--scripts` adds an example
+script that follows the agentic-interface rules (non-interactive, JSON
+envelope on stdout, diagnostics on stderr).
+
+## 2. Write the skill
+
+Open `SKILL.md` and replace the TODOs. The description is the most important
+line in the file; it's all the agent sees before deciding to use the skill.
+Say what it does and when to use it, with the words users actually say.
+
+Then define the real process in `flow.toml`:
+
+```toml
+name = "stripe-report"
+
+[[steps]]
+id = "fetch"
+description = "Pull the month's charges"
+directive = "Run scripts/fetch.py --month <month>; it writes out/charges.json"
+command = "python3 scripts/fetch.py"
+
+[steps.verify]
+file_exists = "out/charges.json"
+
+[[steps]]
+id = "review"
+description = "Sanity-check the data"
+directive = "Open out/charges.json; confirm totals are plausible before reporting"
+requires = ["fetch"]
+
+[[steps]]
+id = "report"
+description = "Produce the report"
+directive = "Run scripts/report.py; it writes out/report.md"
+requires = ["review"]
+
+[steps.verify]
+file_exists = "out/report.md"
+```
+
+Steps with `[steps.verify]` complete only when reality matches
+(`file_exists`, `dir_exists`, `glob`, `command`, `env`). The `review` step
+has no verify: it's a **mandate step** the agent marks done with
+`steer flow done review`, and marking is refused while prerequisites are
+incomplete.
+
+## 3. Try the runtime
+
+```bash
+cd stripe-report
+
+steer context                       # what the agent sees first
+steer secrets check STRIPE_API_KEY  # exit 1 + exact remediation command
+steer secrets set STRIPE_API_KEY    # hidden prompt; lands in the OS keychain
+
+steer flow status --workspace ~/work/acme   # progress + current directive
+```
+
+```text
+  STRIPE-REPORT WORKFLOW
+  ─────────────────────────────────────────
+  Progress: 0/3 steps  ● fetch  ○ review  ○ report
+
+  ▸ Next: fetch
+    Run scripts/fetch.py --month <month>; it writes out/charges.json
+
+    Run: python3 scripts/fetch.py
+```
+
+## 4. Validate and ship
+
+```bash
+steer validate            # spec rules + broken refs + budgets + hygiene
+steer install . --user    # → ~/.claude/skills/stripe-report
+steer package             # → stripe-report.zip for the Claude API / claude.ai
+```
+
+`steer validate` fails the build on spec violations (bad name, missing or
+oversized description, broken file references) and refuses packaging when
+credential-looking files are inside the skill directory.
+
+## 5. Use it
+
+In Claude Code, the skill is now invocable as `/stripe-report` and triggers
+automatically when a request matches its description. Other clients pick it
+up from `.claude/skills` / `.agents/skills` per their discovery rules
+(`steer install --dest` targets any root).

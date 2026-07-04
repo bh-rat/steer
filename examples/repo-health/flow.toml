@@ -1,0 +1,37 @@
+# Declarative flow for this skill. The agent drives it with:
+#   steer flow status | next | done <id>   (run inside the workspace)
+#
+# A step with [steps.verify] completes automatically when the condition
+# holds (file_exists, dir_exists, glob, command, env). A step without
+# verify is a mandate step: the agent marks it done explicitly.
+
+name = "repo-health"
+
+# {skill_dir} expands to this flow.toml's directory at load time, so the
+# printed command runs verbatim from the workspace even when the skill is
+# installed under .claude/skills/.
+
+[[steps]]
+id = "collect"
+description = "Gather repository facts"
+directive = "Collect the raw facts: git activity, file inventory, TODO markers, test presence. Writes out/health/data.json."
+command = "python3 {skill_dir}/scripts/collect.py"
+
+[steps.verify]
+file_exists = "out/health/data.json"
+
+[[steps]]
+id = "report"
+description = "Render the health report"
+directive = "Turn the collected data into the report (records trend state in steer store). Writes out/health/REPORT.md."
+command = "python3 {skill_dir}/scripts/report.py"
+requires = ["collect"]
+
+[steps.verify]
+file_exists = "out/health/REPORT.md"
+
+[[steps]]
+id = "review"
+description = "Surface the findings"
+directive = "Read out/health/REPORT.md, present the three most actionable findings to the user, then mark done: steer flow done review"
+requires = ["report"]

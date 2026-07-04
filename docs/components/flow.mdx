@@ -1,0 +1,130 @@
+---
+title: Flow
+description: Multi-step processes the agent cannot skip.
+---
+
+The pattern we saw most often in real skills is ordering enforcement written
+as rhetoric: "**You MUST complete each phase before proceeding**", ALL-CAPS
+warnings, stop gates in markdown state files. Prose pleads; it doesn't
+enforce.
+
+A Flow is the machinery: a DAG of steps where each step either verifies
+against reality or is a **mandate** the agent marks explicitly, and both
+are gated on prerequisites. The agent only ever sees the current step's
+directive.
+
+## Declarative: `flow.toml`
+
+Ship a `flow.toml` in the skill directory; no code is required.
+
+Strings in `flow.toml` may use `{skill_dir}` (the directory containing the
+flow file) and `{workspace}`, expanded at load time, so a directive like
+`command = "python3 {skill_dir}/scripts/collect.py"` prints a command the
+agent can run verbatim from the workspace, even when the skill is
+installed under `.claude/skills/`.
+
+```toml
+name = "release"
+
+[[steps]]
+id = "configure"
+description = "Create the release config"
+directive = "Write out/config.json with the version and changelog entries"
+
+[steps.verify]
+file_exists = "out/config.json"
+
+[[steps]]
+id = "review"
+description = "Human-judgment checkpoint"
+directive = "Read out/config.json; confirm the changelog is accurate"
+requires = ["configure"]
+
+[[steps]]
+id = "publish"
+description = "Publish the release"
+directive = "Run the publish script"
+command = "scripts/publish.sh"
+requires = ["review"]
+
+[steps.verify]
+command = "git tag --list | grep -q v2"
+```
+
+**Verify conditions** (all must hold; paths relative to the workspace):
+
+| Condition | Complete when |
+|---|---|
+| `file_exists = "path"` | the file exists |
+| `dir_exists = "path"` | the directory exists |
+| `glob = "out/*.pdf"` | at least one match |
+| `command = "pytest -q"` | exit code 0 |
+| `env = "VAR"` | the variable is set and non-empty |
+
+A step without `[steps.verify]` is a mandate step: the agent marks it
+with `steer flow done <id>`, and marking is refused while prerequisites are
+incomplete. Marking is not a way to skip ahead.
+
+## CLI
+
+```bash
+steer flow status              # progress bar + current directive (+ --json)
+steer flow next                # just the current directive
+steer flow done review        # mark a mandate step complete
+steer flow reset [review]     # forget mandate completion (one or all)
+```
+
+Flow resolution: `--file <flow.toml>`, `--skill <installed-skill>`, or the
+nearest skill/`flow.toml` above the working directory. The **workspace**
+(`--workspace`, default `.`) is where verify conditions are evaluated and
+where mandate state persists: `<workspace>/.steer/flows/<name>.json`.
+The skill defines the process; the workspace holds the progress.
+
+```text
+  RELEASE WORKFLOW
+  ─────────────────────────────────────────
+  Progress: 1/3 steps  ✓ configure  ● review  ○ publish
+
+  ▸ Next: review
+    Read out/config.json; confirm the changelog is accurate
+```
+
+## Programmatic: Python
+
+For verify logic beyond the declarative conditions:
+
+```python
+from steer import Flow, Step
+
+flow = Flow("release", workspace=".")
+flow.add_step(Step(
+    id="configure",
+    description="Create the release config",
+    verify=lambda ctx: validate_config(ctx.workspace),   # any callable
+    get_directive=lambda ctx: ctx.directive(
+        "Write out/config.json", command="my-tool init"),
+))
+flow.add_step(Step(id="review", requires=["configure"]))  # mandate
+
+directive = flow.get_directive(flow.context())
+flow.mark_complete("review")        # FlowBlockedError if prereqs unmet
+```
+
+CLI tools built on steer can also gate their own subcommands with
+`flow.require_step("publish")` / `flow.after_step("configure", ctx)`: block
+a command until prerequisites verify, nudge the next step after one
+completes.
+
+<Note>
+Flows track and mandate human-judgment steps, but a verify condition can
+only check reality (files, commands, env). "The user approved the design"
+stays a mandate step; steer makes it explicit and ordered, not provable.
+</Note>
+
+<Warning>
+A `command` verify condition runs through the shell every time the flow is
+evaluated, including by `steer flow status` and `steer flow next`. That is
+the point (verify observes reality), but it means checking the status of an
+installed skill executes that skill's verify commands: treat a third-party
+skill's `flow.toml` as code you have chosen to run.
+</Warning>

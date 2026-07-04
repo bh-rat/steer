@@ -1,0 +1,176 @@
+---
+title: Authoring skills
+description: Scaffold, validate, package, and install, with the spec's rules enforced.
+---
+
+## Skill anatomy
+
+A skill is a directory whose entrypoint is `SKILL.md` (YAML frontmatter
+plus a markdown body), with optional conventional subdirectories:
+
+```text
+my-skill/
+├── SKILL.md          # required
+├── flow.toml         # steer: declarative process (optional)
+├── scripts/          # executed, not read; code never enters context
+├── references/       # loaded on demand
+└── assets/           # templates, schemas, images
+```
+
+The open spec's hard rules, which `steer validate` enforces:
+
+| Field | Rule |
+|---|---|
+| `name` | required · 1-64 chars · lowercase kebab-case · **must equal the directory name** · no XML · ("claude"/"anthropic" rejected at API upload) |
+| `description` | required · 1-1024 chars · no XML · should say what + when |
+| `license` | optional |
+| `compatibility` | optional · ≤500 chars |
+| `metadata` | optional string map · `version` lives here by convention |
+| `allowed-tools` | optional · experimental, per-client behavior |
+| body | guidance: <500 lines / ~5k tokens; it all enters context on trigger |
+
+## `steer new`
+
+```bash
+steer new my-skill \
+  --description "..." \
+  --with secrets,store,context,flow,proc,learn \
+  --secrets STRIPE_API_KEY,STRIPE_ACCOUNT \
+  --steps fetch,transform,review \
+  --scripts --refs \
+  --license MIT --author "Jane"     # --dir <parent> to scaffold elsewhere
+```
+
+Components take their inputs at scaffold time: `--secrets` names the
+credentials wired into the generated check/set instructions (implies the
+secrets component), and `--steps` generates that linear chain of named
+steps in `flow.toml` (implies flow), each with a TODO directive and a
+commented verify block to fill in.
+
+Add `--auto-learn` to wire a Claude Code Stop hook (`steer learn reflect`)
+that auto-prompts lesson capture when a session contained corrections or
+failures; see [Learn](/components/learn#auto-learning).
+
+Add `--user-invoked` for a skill only the human should trigger (sets
+`disable-model-invocation: true`; see the trigger decision below).
+
+Generates a spec-valid skill with the chosen components written into the
+SKILL.md as agent instructions (the patterns above each component page),
+`flow.toml` when flow is selected, and an example script that follows the
+agentic-interface rules. Scaffolds validate error-free out of the box
+(Claude-Code-only opt-ins like `--auto-learn` add portability notes).
+
+## Writing the body
+
+The spec constrains the frontmatter; the body is where skills are won or
+lost. Four things to get right, in the order to check them:
+
+**1. Trigger: decide who invokes the skill.** Model-invoked skills load
+their description into the agent's context permanently: flexible, but every
+skill you add costs tokens and gives the model one more thing to weigh, and
+it may simply not fire. User-invoked skills (`--user-invoked`) cost the
+human a thing to remember instead; in exchange the skill fires exactly
+when asked, every time. Pick per skill, deliberately. For model-invoked
+skills the description is the entire trigger: say what the skill does
+and when to use it ("Use when the user asks for…"). `steer validate`
+flags thin and trigger-less descriptions, and skips those checks when
+model invocation is disabled.
+
+**2. Structure: steps and reference, kept apart.** A body is at its best
+as a short numbered procedure (steps) plus supporting material (reference).
+Material every run needs can stay in SKILL.md; material only some runs
+need belongs in `references/`, behind a one-line pointer: *"When doing X,
+first read `references/x.md`."* The agent loads it only when that branch
+is hit; that's the progressive-disclosure budget doing its job. Steer
+components replace whole reference sections with a command the agent runs
+instead (`steer context` replaces the "figure out the environment"
+preamble; `flow.toml` replaces the process prose).
+
+**3. Steering: use load-bearing words, then verify machinery.** Prefer
+one precise term the model already knows ("vertical slice", "dry run",
+"idempotent") over a paragraph of don'ts; you'll see the term echoed in
+the agent's reasoning when it lands. And when a step genuinely must not be
+skipped, don't escalate to ALL-CAPS. Give it a `flow.toml` verify
+condition; `steer flow` refuses to advance until reality matches.
+
+**4. Pruning: delete what doesn't change behavior.** Skills accumulate
+sediment: duplicated templates, stale caveats, instructions that sound
+important but change nothing (delete one, re-run the skill, see if
+anything differs). Keep one source of truth per fact. `steer validate`
+catches the mechanical cases: the same paragraph in two places
+(`DUPLICATE_TEXT`), reference files nothing points to
+(`REFERENCE_ORPHAN`), and bodies past the ~5k-token budget.
+
+## `steer validate`
+
+```bash
+steer validate [path] [--json] [--packaging]
+```
+
+Beyond the spec table above:
+
+| Check | Level |
+|---|---|
+| Broken `[link](path)` targets | error |
+| Backticked `scripts/...` mentions that don't exist | warning |
+| Body over 500 lines / ~5k tokens | warning |
+| Thin description (<40 chars) | warning |
+| No "use when" trigger phrasing in description | info |
+| The same paragraph in two places (SKILL.md / references) | warning |
+| `references/` files nothing points to | info |
+| Claude-Code-only frontmatter (`hooks`, `context`, `paths`, …) | warning (portability) |
+| `disable-model-invocation` present | info (deliberate trigger choice; trigger checks skipped) |
+| Unknown frontmatter fields | warning |
+| Missing `metadata.version` | info |
+| **Credential-looking files inside the skill** (.env, *.pem, *.key, credentials*.json, …) | warning; **error with `--packaging`** |
+| Skill ≥30MB (API zip limit) | error |
+
+Exits with code 1 on any error, so CI can gate on it.
+
+## `steer package` and `steer install`
+
+```bash
+steer package [path] [-o out.zip]
+steer install <dir-or-zip> [--user] [--dest .agents/skills] [--force]
+steer list [--json]
+```
+
+`package` runs packaging-strict validation and produces a zip with the
+skill folder at its root, the layout the Claude API (`POST /v1/skills`)
+and claude.ai uploads expect. `install` validates, then copies into
+`.claude/skills` (project), `~/.claude/skills` (`--user`), or any root
+(`--dest`). `list` discovers skills across `.claude/skills` and
+`.agents/skills` at both scopes, with a validation status per skill.
+
+## Scripts: the result envelope
+
+Scripts are executed, not read; their only interface is argv in and
+stdout out. Steer standardizes the out side:
+
+```python
+from steer.output import print_envelope
+
+print_envelope("ok", "Report generated",
+               data={"rows": 120}, artifacts=["out/report.pdf"])
+# prints (pretty-printed):
+# {"status": "ok", "summary": "...", "data": {...}, "artifacts": [...]}
+# and returns the right exit code (1 when status == "error")
+```
+
+Statuses: `ok`, `error`, `blocked`, `needs_input`, `partial`; an optional
+`errors=[...]` list carries the details. Keep scripts non-interactive,
+self-documenting via `--help`, diagnostics on stderr, distinct exit codes.
+`steer new --scripts` generates this shape.
+
+## Steer's own paths
+
+| Path | Holds |
+|---|---|
+| `~/.steer/` (override: `STEER_HOME`) | everything steer stores for you |
+| `~/.steer/skills/<name>/` | `store.db`, `secrets.json` (0600), keychain index, `lessons.db` + `LEARNINGS.md` |
+| `<workspace>/.steer/flows/<flow>.json` | mandate-step completion |
+| `<workspace>/.steer/<skill>/store.db` | workspace-scoped store |
+| `<workspace>/.steer/proc/<name>/` | `meta.json` (pid inside), captured `log` |
+
+Skill resolution for runtime commands: `--skill` flag → `STEER_SKILL` env
+var → nearest `SKILL.md` above the working directory.
