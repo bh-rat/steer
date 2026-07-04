@@ -40,7 +40,7 @@ packages = ["steer"]
 [tool.hatch.build.targets.sdist]
 # Allowlist: local working material next to the repo must never ship.
 only-include = [
-    "steer", "tests", "examples",
+    "steer", "tests", "examples", "skills",
     "README.md", "CHANGELOG.md", "LICENSE", "CONTRIBUTING.md", "SECURITY.md",
 ]
 

@@ -53,7 +53,8 @@ jobs:
           steer package demo-skill -o demo.zip
           steer install demo-skill --dest installed-skills --force
           test -f installed-skills/demo-skill/SKILL.md
-      - name: Validate bundled examples
+      - name: Validate bundled skills and examples
         run: |
+          steer validate skills/building-skills
           steer validate examples/repo-health
           steer validate examples/commit-message
