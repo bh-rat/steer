@@ -1,5 +1,6 @@
-# Declarative flow for this skill. The agent drives it with:
-#   steer flow status | next | done <id>   (run inside the workspace)
+# Declarative flow for this skill. The agent drives it with the bundled
+# runtime, run inside the workspace:
+#   python3 scripts/steer.py flow status | next | done <id>
 #
 # A step with [steps.verify] completes automatically when the condition
 # holds (file_exists, dir_exists, glob, command, env). A step without
@@ -33,5 +34,5 @@ file_exists = "out/health/REPORT.md"
 [[steps]]
 id = "review"
 description = "Surface the findings"
-directive = "Read out/health/REPORT.md, present the three most actionable findings to the user, then mark done: steer flow done review"
+directive = "Read out/health/REPORT.md, present the three most actionable findings to the user, then mark done: python3 {skill_dir}/scripts/steer.py flow done review"
 requires = ["report"]

@@ -35,6 +35,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from .output import CLI_HINT
 from .paths import workspace_steer_dir
 
 _VERIFY_COMMAND_TIMEOUT = 60
@@ -391,7 +392,7 @@ class Flow:
         mandate_hint = ""
         if current.verify is None:
             mandate_hint = (f" When finished, mark it done: "
-                            f"steer flow done {current.id}")
+                            f"{CLI_HINT} flow done {current.id}")
         return Directive(
             step=current.id,
             status=StepStatus.READY,

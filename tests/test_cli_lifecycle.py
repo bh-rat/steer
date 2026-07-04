@@ -178,8 +178,10 @@ class TestRuntimeCommands(SteerTestCase):
         )
         self.assertEqual(code, 0, err)
         content = (self.root / "stripe-sync" / "SKILL.md").read_text()
-        self.assertIn("steer secrets check STRIPE_API_KEY", content)
-        self.assertIn("steer secrets check STRIPE_ACCOUNT", content)
+        self.assertIn("python3 scripts/steer.py secrets check STRIPE_API_KEY",
+                      content)
+        self.assertIn("python3 scripts/steer.py secrets check STRIPE_ACCOUNT",
+                      content)
         flow = (self.root / "stripe-sync" / "flow.toml").read_text()
         self.assertIn('id = "fetch"', flow)
         self.assertIn('id = "transform"', flow)

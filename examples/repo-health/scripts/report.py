@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Render out/health/data.json into out/health/REPORT.md.
 
-Records this run's totals in steer's workspace store and shows trends
-when a previous run exists. Degrades gracefully when the steer library
-is not importable (report still renders, no trend).
+Records this run's totals in steer's workspace store (imported from the
+bundled runtime next to this script) and shows trends when a previous
+run exists. Degrades gracefully when that import fails (report still
+renders, no trend).
 """
 import json
 import sys
@@ -33,7 +34,8 @@ def _trend(totals):
     try:
         from steer import Store
     except ImportError:
-        return ["- trend unavailable (steer library not importable here)"]
+        return ["- trend unavailable (bundled runtime scripts/steer.py "
+                "is missing)"]
     with Store("repo-health", scope="workspace") as store:
         previous = store.get("last_totals")
         store.put("last_totals", totals)

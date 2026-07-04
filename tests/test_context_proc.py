@@ -115,9 +115,13 @@ class TestCreateModule(SteerTestCase):
         findings = validate_skill(skill_dir)
         self.assertFalse(has_errors(findings), findings)
         content = (skill_dir / "SKILL.md").read_text()
-        for marker in ("steer context", "steer secrets check",
-                       "steer flow status", "steer store", "steer proc"):
+        for marker in ("python3 scripts/steer.py context",
+                       "python3 scripts/steer.py secrets check",
+                       "python3 scripts/steer.py flow status",
+                       "python3 scripts/steer.py store",
+                       "python3 scripts/steer.py proc"):
             self.assertIn(marker, content)
+        self.assertTrue((skill_dir / "scripts" / "steer.py").exists())
         self.assertTrue((skill_dir / "flow.toml").exists())
         self.assertTrue((skill_dir / "scripts" / "example.py").exists())
         self.assertTrue((skill_dir / "references").is_dir())

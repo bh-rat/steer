@@ -86,6 +86,7 @@ def validate_skill(path, for_packaging: bool = False) -> List[Finding]:
     findings.extend(_check_orphan_references(skill))
     findings.extend(_check_duplication(skill))
     findings.extend(_check_scripts(skill))
+    findings.extend(_check_runtime(skill, for_packaging))
     findings.extend(_check_learnings(skill))
     findings.extend(_check_hygiene(skill, for_packaging))
     return findings
@@ -365,6 +366,94 @@ def _check_scripts(skill: Skill) -> List[Finding]:
     return findings
 
 
+def _runtime_scan_corpus(skill: Skill) -> str:
+    """Everything an agent following this skill reads: SKILL.md body,
+    flow.toml (directives print runnable commands), and references."""
+    parts = [skill.body]
+    flow_file = skill.path / "flow.toml"
+    if flow_file.is_file():
+        try:
+            parts.append(flow_file.read_text(encoding="utf-8",
+                                             errors="replace"))
+        except OSError:
+            pass
+    for ref in _reference_files(skill):
+        if ref.suffix.lower() in _REFERENCE_EXTS:
+            try:
+                parts.append(ref.read_text(encoding="utf-8",
+                                           errors="replace"))
+            except OSError:
+                pass
+    return "\n".join(parts)
+
+
+def _check_runtime(skill: Skill, for_packaging: bool) -> List[Finding]:
+    """The bundled runtime (scripts/steer.py) vs what the skill asks of it."""
+    from . import __version__
+    from .vendor import (COMPONENT_MODULES, RUNTIME_REL_PATH,
+                         read_runtime_header, runtime_state)
+
+    corpus = _runtime_scan_corpus(skill)
+    components = "|".join(COMPONENT_MODULES)
+    # A bundled-runtime invocation (`python3 scripts/steer.py store ...`)
+    # vs the installed-CLI spelling of the same commands (`steer store ...`).
+    runtime_call = re.compile(rf"scripts/steer\.py\s+({components})\b")
+    installed_call = re.compile(rf"\bsteer\s+({components})\b")
+
+    findings = []
+    header = read_runtime_header(skill.path)
+
+    if header is None:
+        if "scripts/steer.py" in corpus:
+            if (skill.path / RUNTIME_REL_PATH).is_file():
+                findings.append(Finding(
+                    WARNING, "RUNTIME_HEADER",
+                    "scripts/steer.py has no parseable steer-runtime header; "
+                    "steer can't verify or refresh it. Regenerate: "
+                    "steer bundle --with <components>"))
+            else:
+                findings.append(Finding(
+                    ERROR, "RUNTIME_MISSING",
+                    "the skill invokes scripts/steer.py but has no bundled "
+                    "runtime. Generate it: steer bundle --with "
+                    "<components>"))
+        return findings
+
+    called = set(runtime_call.findall(corpus))
+    missing = called - set(header.components)
+    if missing:
+        findings.append(Finding(
+            ERROR if for_packaging else WARNING, "RUNTIME_COMPONENT",
+            f"the skill invokes component(s) the bundled runtime doesn't "
+            f"include: {', '.join(sorted(missing))} (bundled: "
+            f"{', '.join(header.components)}). Rebundle: steer bundle "
+            f"--with {','.join(header.components + sorted(missing))}"))
+
+    state = runtime_state(skill.path, header=header)
+    if state == "stale":
+        findings.append(Finding(
+            INFO, "RUNTIME_STALE",
+            f"bundled runtime was written by steer {header.version} (this "
+            f"is {__version__}); it still works. steer package refreshes "
+            f"it, or run: steer bundle"))
+    elif state == "edited":
+        findings.append(Finding(
+            ERROR if for_packaging else WARNING, "RUNTIME_EDITED",
+            "scripts/steer.py differs from steer's output for its declared "
+            "components; it is generated code and edits will be lost. "
+            "Regenerate it (steer bundle) and put changes in your own "
+            "scripts instead"))
+
+    if installed_call.search(corpus):
+        findings.append(Finding(
+            INFO, "RUNTIME_SPELLING",
+            "the skill calls the installed CLI (`steer <component> ...`) "
+            "even though it bundles its runtime; prefer `python3 "
+            "scripts/steer.py <component> ...` so the skill runs without "
+            "steer installed"))
+    return findings
+
+
 LEARNINGS_LINE_BUDGET = 150
 
 
@@ -383,7 +472,8 @@ def _check_learnings(skill: Skill) -> List[Finding]:
             f"learnings.md is {line_count} lines (guidance: "
             f"<{LEARNINGS_LINE_BUDGET}). Distill or archive old lessons; "
             f"stale lessons degrade the skill"))
-    if "learnings.md" not in skill.body and "steer learn" not in skill.body:
+    if ("learnings.md" not in skill.body
+            and not re.search(r"steer(\.py)?\s+learn\b", skill.body)):
         findings.append(Finding(
             INFO, "LEARNINGS_UNREFERENCED",
             "learnings.md exists but SKILL.md never mentions it; the agent "

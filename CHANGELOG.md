@@ -4,6 +4,36 @@ All notable changes to steer are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org/) (pre-1.0: minor bumps may break).
 
+## 0.1.1: skills carry their own runtime
+
+### Added
+
+- Bundled runtime: `steer new` writes `scripts/steer.py` into every
+  skill that uses components: a generated, self-contained copy of
+  exactly the chosen components (Python ≥ 3.11, stdlib only). SKILL.md
+  invokes it as `python3 scripts/steer.py <component> ...`, so agents
+  run the skill without steer installed; sibling scripts get the library
+  the same way (`from steer import Store`).
+- `steer bundle [--with a,b,c]` writes or refreshes a skill's bundled
+  runtime; without `--with` it re-reads the bundle's own header.
+- The bundle resolves the skill it ships in from its own location:
+  no `--skill` flags, no cwd guessing, and agent-facing hints (secrets
+  remediation, learn digest, flow directives) spell commands the way
+  the bundle is invoked.
+- Validation understands bundles: `RUNTIME_MISSING`,
+  `RUNTIME_COMPONENT`, `RUNTIME_EDITED`, `RUNTIME_STALE`, and
+  `RUNTIME_SPELLING` findings. `steer package` refreshes a stale bundle
+  before zipping and refuses an edited one.
+
+### Changed
+
+- Generated SKILL.md templates and the repo-health example use the
+  bundled spelling throughout. The installed CLI keeps working exactly
+  as before (runtime commands now live in `steer/runtime_cli.py`,
+  shared by both entry points).
+- The scaffolded example script no longer imports steer; it prints its
+  result envelope with the standard library.
+
 ## 0.1.0: initial public release
 
 Published on PyPI as `steer-ai` (the name `steer` was already taken);

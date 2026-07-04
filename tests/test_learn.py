@@ -173,6 +173,11 @@ def _transcript_line(role, text):
                                    "content": [{"type": "text", "text": text}]}})
 
 
+def _tool_use_line(command):
+    return json.dumps({"message": {"role": "assistant", "content": [
+        {"type": "tool_use", "name": "Bash", "input": {"command": command}}]}})
+
+
 class TestReflect(SteerTestCase):
     def _write_transcript(self, *lines):
         path = self.root / "transcript.jsonl"
@@ -186,12 +191,29 @@ class TestReflect(SteerTestCase):
             _transcript_line("user", "No, that's wrong - use the EU endpoint"),
             json.dumps({"type": "tool_result", "is_error": True,
                         "content": "boom"}),
-            _transcript_line("assistant", "ran steer learn note \"x\""),
+            _tool_use_line('steer learn note "x" --skill t'),
         )
         scan = scan_transcript(path)
         self.assertEqual(scan["corrections"], 1)
         self.assertEqual(scan["failures"], 1)
         self.assertTrue(scan["captured"])
+
+    def test_scan_counts_bundled_runtime_capture(self):
+        path = self._write_transcript(_tool_use_line(
+            "python3 /skills/t/scripts/steer.py learn run ok"))
+        self.assertTrue(scan_transcript(path)["captured"])
+
+    def test_scan_ignores_instruction_text(self):
+        # A learn-component SKILL.md quotes capture commands verbatim and
+        # enters the transcript when the skill loads; instructions the
+        # agent merely READ must not count as captured.
+        path = self._write_transcript(
+            _transcript_line("user", 'capture it: `python3 scripts/steer.py '
+                                     'learn note "<one imperative rule>"` '
+                                     'and `steer learn run ok`'),
+            _transcript_line("assistant", 'I will run steer learn note soon'),
+        )
+        self.assertFalse(scan_transcript(path)["captured"])
 
     def test_reflect_blocks_once_with_instructions(self):
         path = self._write_transcript(
@@ -219,8 +241,7 @@ class TestReflect(SteerTestCase):
     def test_reflect_quiet_when_already_captured(self):
         path = self._write_transcript(
             _transcript_line("user", "no, wrong approach"),
-            _transcript_line("assistant",
-                             'Bash: steer learn note "use Y" --skill t'),
+            _tool_use_line('steer learn note "use Y" --skill t'),
         )
         self.assertIsNone(reflect({"transcript_path": path,
                                    "stop_hook_active": False}, "t"))
@@ -281,9 +302,9 @@ class TestLearnCLI(SteerTestCase):
         findings = validate_skill(skill_dir)
         self.assertFalse(has_errors(findings), findings)
         content = (skill_dir / "SKILL.md").read_text()
-        self.assertIn("steer learn show", content)
-        self.assertIn("steer learn note", content)
-        self.assertIn("steer learn run ok", content)
+        self.assertIn("python3 scripts/steer.py learn show", content)
+        self.assertIn("python3 scripts/steer.py learn note", content)
+        self.assertIn("python3 scripts/steer.py learn run ok", content)
 
     def test_promote_via_cli_with_dir(self):
         skill_dir = self.make_skill("cli-promote")

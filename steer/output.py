@@ -11,6 +11,11 @@ Usage:
 import json as json_module
 import sys
 
+# How agent-facing hints spell a steer command. "steer" for the installed
+# CLI; a skill's bundled runtime (see vendor.py) rebinds it to
+# "python3 scripts/steer.py" so hints match how the agent invokes it.
+CLI_HINT = "steer"
+
 
 def output_json(data, file=None):
     """Write data as formatted JSON.
