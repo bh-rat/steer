@@ -18,7 +18,9 @@ skill in [`skills/`](../../skills), driving its enforced triage, scaffold,
 port, verify, compare flow; the conversion playbook distilled from all
 four ports lives in that skill's `references/`.
 
-Each is installable as-is:
+Each rebuild bundles its own steer runtime (`scripts/steer.py`), so
+the installed skills run with plain `python3`. Each is installable
+as-is:
 
 ```bash
 steer validate examples/conversions/webapp-testing

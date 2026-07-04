@@ -60,9 +60,20 @@ def measure(skill_dir: Path) -> dict:
              and ".git" not in f.relative_to(skill_dir).parts]
     skill_md = skill_dir / "SKILL.md"
     body = body_of(skill_md)
+
+    def is_generated_runtime(f: Path) -> bool:
+        if f.name != "steer.py":
+            return False
+        head = f.read_text(encoding="utf-8", errors="replace")[:200]
+        return "steer-runtime:" in head
+
+    runtime_loc = sum(
+        len(f.read_text(encoding="utf-8", errors="replace").splitlines())
+        for f in files if is_generated_runtime(f))
     scripts_loc = sum(
         len(f.read_text(encoding="utf-8", errors="replace").splitlines())
-        for f in files if f.suffix.lower() in SCRIPT_EXTS)
+        for f in files
+        if f.suffix.lower() in SCRIPT_EXTS and not is_generated_runtime(f))
     ref_files = [f for f in files
                  if "references" in f.parts or "examples" in f.parts]
     ref_tokens = sum(
@@ -83,6 +94,7 @@ def measure(skill_dir: Path) -> dict:
         "body_lines": len(body.splitlines()),
         "body_tokens_est": est_tokens(body),
         "shipped_script_lines": scripts_loc,
+        "generated_runtime_lines": runtime_loc,
         "deferred_reference_files": len(ref_files),
         "deferred_reference_tokens_est": ref_tokens,
         "files_nothing_references": unreferenced(skill_dir, files),

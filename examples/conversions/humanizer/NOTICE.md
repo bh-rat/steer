@@ -23,7 +23,10 @@ Changes from the original:
   `metadata.version`.
 - Deliberately NOT fixed: the body keeps all 33 patterns with their
   examples inline and still exceeds the 500-line / 5k-token guidance
-  (575 lines, ~7.2k estimated tokens, down from 602 / ~8.3k). The
+  (581 lines, ~7.3k estimated tokens, down from 602 / ~8.3k). The
   patterns are tuned teaching content and splitting them risks
   changing behavior; that trim belongs to the original author, not a
   port.
+- Carries a generated bundled runtime (scripts/steer.py, steer 0.1.1)
+  holding exactly its components, so the skill runs with plain python3
+  and no steer install; regenerate with steer bundle.

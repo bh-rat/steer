@@ -1,6 +1,7 @@
-# Declarative flow for this skill. The agent drives it with:
-#   steer flow status | next | done <id>   (with --file and --workspace,
-#   see SKILL.md)
+# Declarative flow for this skill. The agent drives it with the bundled
+# runtime:
+#   python3 "$SKILL/scripts/steer.py" flow status | next | done <id>
+#   (always with --workspace "$WS"; see SKILL.md)
 #
 # The conversion workspace the steps verify against:
 #   original/          vendored copy of the source skill

@@ -14,6 +14,12 @@ underlying issues.
 **Core principle:** ALWAYS find root cause before attempting fixes.
 Symptom fixes are failure.
 
+This skill bundles its own steer runtime at `scripts/steer.py`; the
+commands below invoke it with `python3` and need nothing installed.
+Paths are relative to this skill's directory: when your working
+directory is elsewhere (it usually is), use the skill's full path
+(`python3 <path-to-this-skill>/scripts/steer.py ...`).
+
 ## The Iron Law
 
 ```
@@ -48,11 +54,11 @@ The four phases are an enforced flow; steps verify themselves against
 artifacts in `out/debug/`, and you cannot skip ahead.
 
 1. Announce: "Working through the systematic-debugging flow."
-2. Run `steer flow status` (in the workspace) to see the current phase.
+2. Run `python3 scripts/steer.py flow status` (in the workspace) to see the current phase.
 3. Do what the directive says, guided by the phase notes below.
-4. Run `steer flow next` and repeat until all steps report complete.
+4. Run `python3 scripts/steer.py flow next` and repeat until all steps report complete.
 
-Do NOT claim the bug is fixed while `steer flow status` shows incomplete
+Do NOT claim the bug is fixed while `python3 scripts/steer.py flow status` shows incomplete
 steps. The flow is defined in `flow.toml`.
 
 ### Phase 1: Root Cause Investigation (step: investigate)
@@ -65,7 +71,7 @@ BEFORE attempting ANY fix:
 2. **Reproduce consistently.** Can you trigger it reliably? What are the
    exact steps? If not reproducible, gather more data; don't guess.
 3. **Check recent changes.** Git diff, recent commits, new dependencies,
-   config changes (`steer context --only git` gives the git state).
+   config changes (git diff, git log).
 4. **Gather evidence in multi-component systems.** For each component
    boundary, log what enters and what exits, and verify config
    propagation. Run once to see WHERE it breaks, then investigate that
@@ -108,7 +114,7 @@ exists before Phase 2 unlocks.
 2. **Implement a single fix** at the root cause. ONE change at a time.
    No "while I'm here" improvements, no bundled refactoring.
 3. **Verify:** the failing test passes, no other tests broke, the issue
-   is actually resolved. Then, and only then: `steer flow done fix`.
+   is actually resolved. Then, and only then: `python3 scripts/steer.py flow done fix`.
 4. **If the fix didn't work:** STOP. Count your attempts. Under three:
    return to Phase 1 and re-analyze with the new information (delete the
    stale artifacts in `out/debug/` so the flow re-gates). Three or more:
@@ -135,7 +141,7 @@ If you catch yourself thinking:
 - **Each fix reveals new problem in different place**
 
 **ALL of these mean: STOP. Return to Phase 1.**
-`steer flow status` will tell you exactly which phase you are really in;
+`python3 scripts/steer.py flow status` will tell you exactly which phase you are really in;
 capture the rationalization you caught yourself in (see Learning).
 
 ## Your Human Partner's Signals You're Doing It Wrong
@@ -177,14 +183,14 @@ This skill improves with use. As you work:
 
 - A disproven hypothesis, a rationalization you caught yourself in, or a
   technique that cracked the case is a lesson; capture it the moment it
-  happens: `steer learn note "<one imperative rule>" --kind correction --skill systematic-debugging`
+  happens: `python3 scripts/steer.py learn note "<one imperative rule>" --kind correction`
 - At the start of a debugging session, run
-  `steer learn show --skill systematic-debugging`; those lessons came
+  `python3 scripts/steer.py learn show`; those lessons came
   from real previous bugs. Confirm the ones that helped
-  (`steer learn confirm <id> --skill systematic-debugging`), dispute the
+  (`python3 scripts/steer.py learn confirm <id>`), dispute the
   ones that misled.
 - Before finishing, record the outcome:
-  `steer learn run ok --skill systematic-debugging` (or `failed` with
+  `python3 scripts/steer.py learn run ok` (or `failed` with
   `--note`).
 
 If a `learnings.md` exists in this skill, read it too; those are

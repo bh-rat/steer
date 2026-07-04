@@ -26,3 +26,6 @@ Changes from the original:
   `CREATION-LOG.md`, five creation-time artifacts that shipped inside
   the original skill directory but are never referenced by its SKILL.md.
 - `license: MIT` and `metadata.version` added to the frontmatter.
+- Carries a generated bundled runtime (scripts/steer.py, steer 0.1.1)
+  holding exactly its components, so the skill runs with plain python3
+  and no steer install; regenerate with steer bundle.

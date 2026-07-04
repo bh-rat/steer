@@ -1,0 +1,45 @@
+---
+title: Converting existing skills
+description: Install converting-skills and your agent ports a skill onto steer faithfully, with a license gate and a measured comparison.
+---
+
+[Building skills](/guides/building-skills) covers creating new ones;
+this page is about the other direction. `converting-skills` is a
+first-party skill that ships in the steer repo: installed, it turns
+"port this skill to steer" into a gated conversion that preserves the
+original's content and voice, swaps its hand-rolled machinery for
+components, and ends with numbers instead of a vibe.
+
+```bash
+git clone https://github.com/bh-rat/steer && cd steer
+steer install skills/converting-skills --user   # project scope: drop --user
+```
+
+## What a conversion looks like
+
+Five steps behind the skill's own `flow.toml`; each completes only
+against the conversion workspace:
+
+| Step | Completes when |
+|---|---|
+| triage | inventory, license, and component map recorded in `out/conversion/triage.md` |
+| scaffold | `steer new` has produced the rebuild under `rebuild/` |
+| port | content moved, machinery swapped, deltas recorded in the rebuild's NOTICE.md |
+| verify | `steer validate` passes on the rebuild, live |
+| compare | measured deltas written to `out/conversion/comparison.md` |
+
+The license check is a gate, not a formality: per skill, not per repo,
+and a no-derivatives license stops the conversion before it starts.
+Every rebuild carries the original's license file plus a NOTICE.md
+recording exactly what changed, and bundles its own runtime so it runs
+with plain `python3`.
+
+## The playbook it follows
+
+The skill's `references/` distill real conversions: mapping hand-rolled
+machinery to components, license triage and attribution, and the
+comparison checklist. Four such rebuilds live in
+[`examples/conversions`](https://github.com/bh-rat/steer/tree/main/examples/conversions)
+with a deterministic harness and measured results; they are the
+evidence base this skill was written from, and the humanizer rebuild
+there was produced by this skill end to end.

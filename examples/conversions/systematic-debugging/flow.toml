@@ -1,5 +1,5 @@
 # Declarative flow for this skill. The agent drives it with:
-#   steer flow status | next | done <id>   (run inside the workspace)
+#   python3 scripts/steer.py flow status | next | done <id>   (run inside the workspace)
 #
 # The four phases of systematic debugging, machine-gated. Investigation
 # steps complete only when their artifact exists; the fix step stays
@@ -10,7 +10,7 @@ name = "systematic-debugging"
 [[steps]]
 id = "investigate"
 description = "Phase 1: root cause investigation"
-directive = "Work Phase 1 of SKILL.md: read the errors completely, reproduce the issue reliably, check recent changes (steer context --only git helps), and instrument component boundaries when the system has several. Record findings in out/debug/evidence.md: exact error text, reproduction steps, recent-change candidates, evidence per boundary."
+directive = "Work Phase 1 of SKILL.md: read the errors completely, reproduce the issue reliably, check recent changes (git diff, git log), and instrument component boundaries when the system has several. Record findings in out/debug/evidence.md: exact error text, reproduction steps, recent-change candidates, evidence per boundary."
 
 [steps.verify]
 file_exists = "out/debug/evidence.md"
@@ -45,5 +45,5 @@ file_exists = "out/debug/failing-test.md"
 [[steps]]
 id = "fix"
 description = "Phase 4: one fix at the root cause, verified"
-directive = "Implement ONE fix at the root cause. Rerun the failing reproduction (passes now?) and the surrounding tests (nothing else broke?). Only then: steer flow done fix. If a fix fails, return to Phase 1 with the new information; if you are about to attempt a third fix, stop and question the architecture with your human partner first."
+directive = "Implement ONE fix at the root cause. Rerun the failing reproduction (passes now?) and the surrounding tests (nothing else broke?). Only then: python3 scripts/steer.py flow done fix. If a fix fails, return to Phase 1 with the new information; if you are about to attempt a third fix, stop and question the architecture with your human partner first."
 requires = ["failing-test"]

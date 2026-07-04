@@ -17,3 +17,6 @@ Changes from the original:
   (`steer learn`) added.
 - Trigger phrasing ("Use when ...") appended to the description;
   `metadata.version` added.
+- Carries a generated bundled runtime (scripts/steer.py, steer 0.1.1)
+  holding exactly its components, so the skill runs with plain python3
+  and no steer install; regenerate with steer bundle.

@@ -10,6 +10,9 @@ Five reproducible checks, no LLM involved:
   T5  credential handling                 (vercel-cli-with-tokens)
   T6  the skill's own rule, machine-held  (humanizer)
 
+The steer side of every check runs through the skills' own bundled
+runtimes (scripts/steer.py), so this needs python3 and nothing else.
+
 Usage:
   python3 behavior.py --originals <dir with anthropic-skills/ superpowers/ vercel-agent-skills/>
 """
@@ -27,7 +30,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 FIXTURES = HERE / "fixtures"
 CONVERSIONS = HERE.parent
-STEER = os.environ.get("STEER_BIN", "steer")
+
+
+def runtime(skill: str) -> list:
+    return [sys.executable, str(CONVERSIONS / skill / "scripts" / "steer.py")]
 
 
 def free_port() -> int:
@@ -94,12 +100,14 @@ def t1_orphaned_child(with_server: Path, tmp: Path):
     pidfile = tmp / "child2.pid"
     ws = tmp / "t1-ws"
     ws.mkdir()
-    proc, _ = run([STEER, "proc", "start", "dev", "--ready-port", str(port),
+    proc, _ = run(runtime("webapp-testing") +
+                  ["proc", "start", "dev", "--ready-port", str(port),
                    "--workspace", str(ws),
                    "--", sys.executable, f"{FIXTURES}/dev_server.py", str(port)],
                   env={"DEV_SERVER_PIDFILE": str(pidfile)})
     started_ok = proc.returncode == 0
-    proc, _ = run([STEER, "proc", "stop", "dev", "--workspace", str(ws)])
+    proc, _ = run(runtime("webapp-testing") +
+                  ["proc", "stop", "dev", "--workspace", str(ws)])
     child = int(pidfile.read_text()) if pidfile.exists() else 0
     time.sleep(0.5)
     facts["steer"] = {
@@ -131,7 +139,8 @@ def t2_chatty_pipe(with_server: Path, tmp: Path):
     port = free_port()
     ws = tmp / "t2-ws"
     ws.mkdir()
-    proc, secs = run([STEER, "proc", "start", "chat", "--ready-port", str(port),
+    proc, secs = run(runtime("webapp-testing") +
+                     ["proc", "start", "chat", "--ready-port", str(port),
                       "--timeout", "10", "--workspace", str(ws),
                       "--", sys.executable, f"{FIXTURES}/chatty_server.py", str(port)])
     facts["steer"] = {
@@ -139,7 +148,7 @@ def t2_chatty_pipe(with_server: Path, tmp: Path):
         "became_ready": proc.returncode == 0 and port_open(port),
         "seconds": round(secs, 1),
     }
-    run([STEER, "proc", "stop", "chat", "--workspace", str(ws)])
+    run(runtime("webapp-testing") + ["proc", "stop", "chat", "--workspace", str(ws)])
     return facts
 
 
@@ -162,7 +171,8 @@ def t3_startup_diagnostics(with_server: Path, tmp: Path):
     port = free_port()
     ws = tmp / "t3-ws"
     ws.mkdir()
-    proc, secs = run([STEER, "proc", "start", "bad", "--ready-port", str(port),
+    proc, secs = run(runtime("webapp-testing") +
+                     ["proc", "start", "bad", "--ready-port", str(port),
                       "--timeout", "6", "--workspace", str(ws),
                       "--", sys.executable, f"{FIXTURES}/failing_server.py", str(port)])
     out = proc.stdout + proc.stderr
@@ -178,15 +188,10 @@ def t4_flow_gates(tmp: Path):
     """The Iron Law as machinery: fix stays locked until artifacts exist."""
     ws = tmp / "t4-ws"
     ws.mkdir()
-    run([STEER, "install", str(CONVERSIONS / "systematic-debugging"),
-         "--dest", str(ws / ".claude" / "skills")])
-    env = {"STEER_SKILL": "systematic-debugging"}
-    flow_file = ws / ".claude" / "skills" / "systematic-debugging" / "flow.toml"
-    base = [STEER, "flow", "--file", str(flow_file)] if flow_file.exists() else \
-           [STEER, "flow"]
 
     def flow(*args):
-        return run(base[:2] + list(args) + base[2:], env=env, cwd=str(ws))[0]
+        return run(runtime("systematic-debugging") +
+                   ["flow", *args, "--workspace", str(ws)], cwd=str(ws))[0]
 
     premature = flow("done", "fix")
     facts = {"premature_fix_refused": premature.returncode != 0
@@ -228,17 +233,17 @@ def t5_credentials(originals: Path, tmp: Path):
     env = {"STEER_HOME": str(home)}
     env_missing = dict(env)
 
-    check = run([STEER, "secrets", "check", "VERCEL_TOKEN",
-                 "--skill", "vercel-cli-with-tokens"], env=env_missing)[0]
+    check = run(runtime("vercel-cli-with-tokens") +
+                ["secrets", "check", "VERCEL_TOKEN"], env=env_missing)[0]
     out = check.stdout + check.stderr
     facts = {"steer": {
-        "missing_is_actionable": "steer secrets set" in out,
+        "missing_is_actionable": "secrets set VERCEL_TOKEN" in out,
         "missing_exit_code": check.returncode,
     }}
 
     env_present = dict(env, VERCEL_TOKEN="vca_fake_not_a_real_token")
-    check = run([STEER, "secrets", "check", "VERCEL_TOKEN",
-                 "--skill", "vercel-cli-with-tokens"], env=env_present)[0]
+    check = run(runtime("vercel-cli-with-tokens") +
+                ["secrets", "check", "VERCEL_TOKEN"], env=env_present)[0]
     facts["steer"]["env_var_found"] = check.returncode == 0
     facts["steer"]["value_in_output"] = "vca_fake_not_a_real_token" in (
         check.stdout + check.stderr)
@@ -267,11 +272,10 @@ def t6_dash_gate(tmp: Path):
     """Humanizer's rule 14 (no em/en dashes) enforced on the final artifact."""
     ws = tmp / "t6-ws"
     (ws / "out" / "humanize").mkdir(parents=True)
-    flow_file = CONVERSIONS / "humanizer" / "flow.toml"
 
     def flow(*args):
-        return run([STEER, "flow", *args, "--file", str(flow_file),
-                    "--workspace", str(ws)], cwd=str(ws))[0]
+        return run(runtime("humanizer") +
+                   ["flow", *args, "--workspace", str(ws)], cwd=str(ws))[0]
 
     (ws / "out" / "humanize" / "draft.md").write_text("draft\n", encoding="utf-8")
     (ws / "out" / "humanize" / "tells.md").write_text("tells\n", encoding="utf-8")

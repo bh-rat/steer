@@ -1,5 +1,5 @@
 # The draft, audit, final loop from Process and Output, machine-gated.
-#   steer flow status | next   (run inside the workspace)
+#   python3 scripts/steer.py flow status | next   (run inside the workspace)
 
 name = "humanizer"
 

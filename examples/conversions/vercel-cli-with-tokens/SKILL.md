@@ -13,14 +13,21 @@ authentication, without relying on `vercel login`. The token is resolved
 once, held outside the conversation and the repo, and the project/team
 binding is remembered between runs.
 
+This skill bundles its own steer runtime at `scripts/steer.py`; the
+commands below invoke it with `python3` and need nothing installed
+(the Vercel CLI itself excepted). Paths are relative to this skill's
+directory: when your working directory is elsewhere (it usually is),
+use the skill's full path
+(`python3 <path-to-this-skill>/scripts/steer.py ...`).
+
 ## Before you start
 
-1. **Ground yourself.** Run `steer context --tools vercel,node,npm` and
+1. **Ground yourself.** Run `python3 scripts/steer.py context --tools vercel,node,npm` and
    read the snapshot; it tells you the platform, git state (including
    whether a remote exists), and whether the Vercel CLI is installed.
    If the CLI is missing: `npm install -g vercel`.
 2. **Apply past lessons.** Run
-   `steer learn show --skill vercel-cli-with-tokens` and follow what it
+   `python3 scripts/steer.py learn show` and follow what it
    says; those lessons came from real previous runs.
 
 ## Step 1: Resolve the token
@@ -28,12 +35,12 @@ binding is remembered between runs.
 Never read a token value into the conversation; check by name, export by
 substitution. Work through these in order:
 
-1. **Ask steer.** `steer secrets check VERCEL_TOKEN --skill vercel-cli-with-tokens`
+1. **Ask steer.** `python3 scripts/steer.py secrets check VERCEL_TOKEN`
    resolves the environment, the OS keychain, and steer's own secret
    store in one command. If present, make it available to the CLI:
 
    ```bash
-   export VERCEL_TOKEN="$(steer secrets get VERCEL_TOKEN --skill vercel-cli-with-tokens)"
+   export VERCEL_TOKEN="$(python3 scripts/steer.py secrets get VERCEL_TOKEN)"
    ```
 
 2. **A `.env` file may hold it.** Detect variable NAMES only; do not
@@ -46,15 +53,15 @@ substitution. Work through these in order:
 
    Then offer to persist it for future runs so this discovery never
    repeats: ask the user to run
-   `steer secrets set VERCEL_TOKEN --skill vercel-cli-with-tokens`
+   `python3 scripts/steer.py secrets set VERCEL_TOKEN`
    (hidden prompt, lands in the keychain or a 0600 file, never in the
    repo or the chat).
 
 3. **No token anywhere: ask the user.** They can create one at
    vercel.com/account/tokens, then run
-   `steer secrets set VERCEL_TOKEN --skill vercel-cli-with-tokens`.
+   `python3 scripts/steer.py secrets set VERCEL_TOKEN`.
    Never ask them to paste the token into the chat. Re-check with
-   `steer secrets check`, then export as in 1.
+   `secrets check`, then export as in 1.
 
 **Important:** once `VERCEL_TOKEN` is exported, the CLI reads it
 natively. **Do not pass it as a `--token` flag**; command-line arguments
@@ -65,7 +72,7 @@ leak into shell history and process listings.
 vercel deploy --token "vca_abc123"
 
 # Good: CLI reads VERCEL_TOKEN from the environment
-export VERCEL_TOKEN="$(steer secrets get VERCEL_TOKEN --skill vercel-cli-with-tokens)"
+export VERCEL_TOKEN="$(python3 scripts/steer.py secrets get VERCEL_TOKEN)"
 vercel deploy
 ```
 
@@ -75,7 +82,7 @@ This binding is workspace state; remember it so future runs skip
 discovery:
 
 ```bash
-steer store get vercel_binding --skill vercel-cli-with-tokens --scope workspace
+python3 scripts/steer.py store get vercel_binding --scope workspace
 ```
 
 If unset, discover it the usual way:
@@ -91,7 +98,7 @@ From a project URL like `https://vercel.com/my-team/my-project`, the
 team slug is the first path segment. Once known, record it:
 
 ```bash
-steer store put vercel_binding '{"team_slug": "<team>", "project_id": "<id>", "org_id": "<org>"}' --skill vercel-cli-with-tokens --scope workspace
+python3 scripts/steer.py store put vercel_binding '{"team_slug": "<team>", "project_id": "<id>", "org_id": "<org>"}' --scope workspace
 ```
 
 If you have both `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, export them
@@ -170,7 +177,7 @@ vercel env rm VAR_NAME --scope <team-slug> -y
 - **Never pass `VERCEL_TOKEN` as a `--token` flag.** Export it and let
   the CLI read it natively.
 - **Never print a credential value into the conversation.** Check by
-  name (`steer secrets check`, name-only greps), move by substitution.
+  name (`secrets check`, name-only greps), move by substitution.
 - **Check steer and the environment for tokens before asking the user.**
 - **Default to preview deployments.** Production only when explicitly
   asked.
@@ -187,13 +194,13 @@ This skill improves with use. As you work:
 
 - The moment the user corrects you, or something fails and then works a
   different way, capture it:
-  `steer learn note "<one imperative rule>" --kind correction --skill vercel-cli-with-tokens`
+  `python3 scripts/steer.py learn note "<one imperative rule>" --kind correction`
   Lessons are atomic rules ("Use X not Y when Z"), never secrets.
-- When a lesson from `steer learn show --skill vercel-cli-with-tokens`
-  helped, run `steer learn confirm <id> --skill vercel-cli-with-tokens`;
-  when one was wrong, `steer learn dispute <id> --skill vercel-cli-with-tokens`.
+- When a lesson from `python3 scripts/steer.py learn show`
+  helped, run `python3 scripts/steer.py learn confirm <id>`;
+  when one was wrong, `python3 scripts/steer.py learn dispute <id>`.
 - Before finishing, record the outcome:
-  `steer learn run ok --skill vercel-cli-with-tokens` (or `failed` with
+  `python3 scripts/steer.py learn run ok` (or `failed` with
   `--note`).
 
 If a `learnings.md` exists in this skill, read it too; those are

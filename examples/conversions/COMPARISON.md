@@ -11,14 +11,20 @@ below is reproducible from this directory; no LLM judging is involved.
 | `vercel-cli-with-tokens` | vercel-labs/agent-skills (MIT per README; repo ships no LICENSE file) | credentials, store, context |
 | `humanizer` | blader/humanizer (MIT) | flow with output gates, store, context economy |
 
-The originals are famous for a reason: all three pass `steer validate`
+The originals are famous for a reason: all four pass `steer validate`
 with zero errors. The differences live in runtime behavior, failure
 modes, and context economy, which is exactly where published skill
 benchmarks are thinnest (see "How this relates to published testing").
 
+Every rebuild carries its own generated runtime (`scripts/steer.py`,
+written by `steer bundle`) holding exactly its components, so the
+skills and every check below run with plain `python3`, no steer
+install.
+
 ## The scoreboard
 
-Five deterministic checks, run by `compare/behavior.py`:
+Six deterministic checks, run by `compare/behavior.py` through the
+rebuilds' own bundled runtimes:
 
 | Check | Original | Steer rebuild |
 |---|---|---|
@@ -41,27 +47,29 @@ defects:
    wrapper commands (`npm run dev` spawning node, here reproduced with
    a Python wrapper) the real server survives. Measured: the original
    exits 0 reporting success while the server child is alive and the
-   port is still bound. `steer proc stop` kills the process group:
-   child dead, port free.
+   port is still bound. The rebuild's `proc stop` kills the process
+   group: child dead, port free.
 2. **A chatty server deadlocks it.** Server output goes to a pipe
    nobody reads; past the pipe buffer the server blocks mid-write
    before binding its port. Measured: a healthy server that logs 4096
    build lines is reported "failed to start" after the full 10.2s
-   timeout. Under `steer proc` (log file, not pipe) it is ready in
-   0.3s.
+   timeout. Under the rebuild's `proc` (log file, not pipe) it is
+   ready in 0.3s.
 3. **Startup failures are undiagnosable.** stderr is piped and
    dropped. Measured: a server that dies printing
    "FATAL: DATABASE_URL is not set" produces a timeout error that
-   never mentions the cause. `steer proc start` fails in 0.3s and the
-   error carries the log tail including the cause.
+   never mentions the cause. The rebuild's `proc start` fails in 0.3s
+   and the error carries the log tail including the cause.
 4. **Dead processes are polled anyway.** The original waits the full
    timeout (6.1s measured) polling a port owned by a process that
    exited in the first millisecond; steer detects the exit immediately.
 
-The rebuild deletes the script entirely (105 lines to 0) and gains
-captured logs, readiness checks, stale-PID detection, and a lessons
-loop. Cost, reported honestly: the SKILL.md body grew from ~894 to
-~1133 estimated tokens (+27%), mostly the learning section.
+The rebuild deletes the script entirely (105 hand-written lifecycle
+lines to 0; the lifecycle now lives in the generated bundled runtime,
+executed, never read into context) and gains captured logs, readiness
+checks, stale-PID detection, and a lessons loop. Cost, reported
+honestly: the SKILL.md body grew from ~894 to ~1250 estimated tokens
+(+40%), the learning section and the bundled-runtime preamble.
 
 ## Case 2: systematic-debugging (superpowers)
 
@@ -73,19 +81,19 @@ gives each phase a verify condition on the artifact the prose already
 demands ("write it down", "list every difference"): evidence,
 comparison, hypothesis, and failing-test records under `out/debug/`.
 
-Measured: `steer flow done fix` on a fresh workspace is refused with
-exit 1 ("Step 'fix' is blocked"); the current step advances
-investigate, analyze, hypothesize, failing-test in exact order as
-artifacts appear; 5/5 steps complete only after all artifacts exist.
-The agent that wants to skip to the fix now needs to fabricate
-evidence files rather than merely ignore a sentence.
+Measured: `flow done fix` on a fresh workspace is refused with exit 1
+("Step 'fix' is blocked"); the current step advances investigate,
+analyze, hypothesize, failing-test in exact order as artifacts appear;
+5/5 steps complete only after all artifacts exist. The agent that
+wants to skip to the fix now needs to fabricate evidence files rather
+than merely ignore a sentence.
 
 Also found by conversion: the original ships five files nothing
 references (three pressure-test transcripts, a test scenario, the
 creation log; 11.8KB), creation-time artifacts in the installed skill.
 The rebuild drops them and moves the four real technique docs behind
-`references/` pointers. Body: ~2430 to ~2245 tokens, while adding the
-flow and learning sections.
+`references/` pointers. Body: ~2430 to ~2332 tokens, while adding the
+flow, learning, and runtime sections.
 
 ## Case 3: vercel-cli-with-tokens (Vercel)
 
@@ -97,18 +105,18 @@ discovery step C is `grep -i 'vercel' .env`, which prints the token
 value into the conversation transcript. Measured with a canary token:
 the value reaches the output verbatim.
 
-The rebuild collapses the cascade into `steer secrets`
+The rebuild collapses the cascade into the secrets component
 (environment, OS keychain, and 0600 file resolved by one check),
 detects `.env` variables by name only, moves values by shell
-substitution, and persists via `steer secrets set` so discovery
-happens once, not every session. Measured: the missing-token path
-exits 1 with the exact command to give the user; the found path never
-prints the value. The project/team binding becomes `steer store`
+substitution, and persists via the hidden-prompt `secrets set` so
+discovery happens once, not every session. Measured: the missing-token
+path exits 1 with the exact command to give the user; the found path
+never prints the value. The project/team binding becomes store
 workspace state instead of per-session rediscovery.
 
 Context economy: troubleshooting, domains, and Stripe plan sections
-move behind `references/` pointers. Body: ~2525 to ~1936 estimated
-tokens (-23%) with identical capability.
+move behind `references/` pointers. Body: ~2525 to ~1988 estimated
+tokens (-21%) with identical capability.
 
 ## Case 4: humanizer (blader)
 
@@ -123,7 +131,7 @@ What conversion still found:
   context on every trigger, 66% over the 5k guidance
   (`steer validate` flags it). The worked example and the voice
   calibration branch are load-on-demand material; behind `references/`
-  pointers the every-trigger body drops to ~7207 tokens (-13%). The
+  pointers the every-trigger body drops to ~7294 tokens (-12%). The
   remaining overage is the patterns themselves, kept deliberately:
   that trim belongs to the original author, not a port (NOTICE.md).
 - **The skill's own rule, machine-held.** The original's process ends
@@ -133,7 +141,7 @@ What conversion still found:
   reports 2/3 complete; removing it flips the same command to 3/3.
 - **Voice profiles persist.** The original re-analyzes the user's
   writing sample every session; the rebuild stores the analyzed
-  profile per user (`steer store`) and reads it back next run.
+  profile per user (the store component) and reads it back next run.
 - Frontmatter: the original's top-level `version:` is not a spec
   field (clients ignore it); it moved to `metadata.version`.
 
@@ -144,18 +152,21 @@ compare flow.
 ## Static comparison
 
 From `compare/metrics.py` (tokens estimated at 4 chars/token, the
-same estimate `steer validate` uses):
+same estimate `steer validate` uses). Hand-written lines are code the
+skill's author maintains; the generated runtime is written by
+`steer bundle`, executed, never read into context, and regenerated
+rather than edited:
 
-| | body tokens | shipped script lines | files nothing references | validate |
-|---|---|---|---|---|
-| webapp-testing original | 894 | 214 | 0 | 1 info |
-| webapp-testing steer | 1133 | 108 | 0 | clean |
-| systematic-debugging original | 2430 | 221 | 5 | 1 info |
-| systematic-debugging steer | 2245 | 221 | 0 | clean |
-| vercel-cli-with-tokens original | 2525 | 0 | 0 | clean |
-| vercel-cli-with-tokens steer | 1936 | 0 | 0 | clean |
-| humanizer original | 8329 | 0 | 1 | 3 warnings, 1 info |
-| humanizer steer | 7207 | 0 | 0 | 2 warnings (deliberate, see NOTICE) |
+| | body tokens | hand-written script lines | generated runtime lines | files nothing references | validate |
+|---|---|---|---|---|---|
+| webapp-testing original | 894 | 214 | 0 | 0 | 1 info |
+| webapp-testing steer | 1250 | 108 | 2308 | 0 | clean |
+| systematic-debugging original | 2430 | 221 | 0 | 5 | 1 info |
+| systematic-debugging steer | 2332 | 221 | 2533 | 0 | clean |
+| vercel-cli-with-tokens original | 2525 | 0 | 0 | 0 | clean |
+| vercel-cli-with-tokens steer | 1988 | 0 | 2587 | 0 | clean |
+| humanizer original | 8329 | 0 | 0 | 1 | 3 warnings, 1 info |
+| humanizer steer | 7294 | 0 | 2823 | 0 | 2 warnings (deliberate, see NOTICE) |
 
 The webapp-testing script delta that matters: 105 of the original's
 214 lines are the server-lifecycle helper, deleted outright; the
@@ -175,7 +186,7 @@ breaks. A June 2026 paper (arXiv 2606.20659) measures that gap:
 existing benchmark runs exercise roughly 40 to 44 percent of skills'
 stated behavior constraints.
 
-The five checks here target exactly that uncovered part: the
+The six checks here target exactly that uncovered part: the
 credential is missing, the server is chatty or dead, the step is
 skipped. They are deterministic, free to run, and require no eval
 cluster. They do not measure end-task quality or trigger reliability;
@@ -198,7 +209,9 @@ python3 compare/behavior.py --originals /tmp/skill-originals
 python3 compare/metrics.py  --originals /tmp/skill-originals
 ```
 
-Requires `steer` on PATH (or `STEER_BIN=...`), Python 3.11+, no other
-dependencies. Each rebuild's NOTICE.md records exactly what changed
-from its original; LICENSE.txt carries the original license where the
-source repository ships one.
+`behavior.py` needs Python 3.11+ and nothing else; the steer side runs
+through the rebuilds' bundled runtimes. `metrics.py` additionally
+needs `steer` on PATH (or `STEER_BIN=...`) for validation. Each
+rebuild's NOTICE.md records exactly what changed from its original;
+LICENSE.txt carries the original license where the source repository
+ships one.

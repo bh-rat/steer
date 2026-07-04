@@ -24,6 +24,12 @@ metadata:
 
 You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. This guide is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
 
+This skill bundles its own steer runtime at `scripts/steer.py`; the
+commands below invoke it with `python3` and need nothing installed.
+Paths are relative to this skill's directory: when your working
+directory is elsewhere (it usually is), use the skill's full path
+(`python3 <path-to-this-skill>/scripts/steer.py ...`).
+
 ## Your Task
 
 When given text to humanize:
@@ -41,10 +47,10 @@ The draft → audit → final loop and the deliverable are defined under Process
 When the user provides a writing sample (their own previous writing),
 first read `references/voice-calibration.md` and analyze the sample
 before rewriting. This skill remembers the result: check
-`steer store get voice_profile --skill humanizer` first, and after
+`python3 scripts/steer.py store get voice_profile` first, and after
 analyzing a new sample, save it so the next run skips re-analysis:
 
-    steer store put voice_profile '{"sentences": "...", "diction": "...", "tics": "..."}' --skill humanizer
+    python3 scripts/steer.py store put voice_profile '{"sentences": "...", "diction": "...", "tics": "..."}'
 
 When no sample and no stored profile exist, use the default voice from
 PERSONALITY AND SOUL below.
@@ -558,7 +564,7 @@ The loop is an enforced flow; each stage verifies against its artifact
 in `out/humanize/`, and the final stage is machine-checked against this
 skill's own em and en dash ban (see rule 14).
 
-1. Run `steer flow status` (in the workspace) to see the current stage.
+1. Run `python3 scripts/steer.py flow status` (in the workspace) to see the current stage.
 2. **draft**: read the input, identify every pattern above, and write
    the draft rewrite to `out/humanize/draft.md`. Cover everything the
    original covers.
@@ -579,11 +585,11 @@ This skill improves with use. As you work:
 
 - The moment the user corrects you (a fix they undo, a voice note, a
   pattern you missed), capture it:
-  `steer learn note "<one imperative rule>" --kind correction --skill humanizer`
-- When a lesson from `steer learn show --skill humanizer` helped, run
-  `steer learn confirm <id> --skill humanizer`; when one misled,
-  `steer learn dispute <id> --skill humanizer`.
-- Before finishing: `steer learn run ok --skill humanizer` (or
+  `python3 scripts/steer.py learn note "<one imperative rule>" --kind correction`
+- When a lesson from `python3 scripts/steer.py learn show` helped, run
+  `python3 scripts/steer.py learn confirm <id>`; when one misled,
+  `python3 scripts/steer.py learn dispute <id>`.
+- Before finishing: `python3 scripts/steer.py learn run ok` (or
   `failed` with `--note`).
 
 If a `learnings.md` exists in this skill, read it too; those are

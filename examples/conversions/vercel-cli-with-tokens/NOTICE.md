@@ -33,3 +33,6 @@ Changes from the original:
 - `license` and `metadata.version` added to the frontmatter;
   `metadata.author: vercel` removed since this rebuild is not by Vercel
   (the derivation is recorded here instead).
+- Carries a generated bundled runtime (scripts/steer.py, steer 0.1.1)
+  holding exactly its components, so the skill runs with plain python3
+  and no steer install; regenerate with steer bundle.

@@ -11,15 +11,21 @@ user gets a drop-in rebuild (same name, same triggers, same
 capabilities), a NOTICE.md recording every delta, and a measured
 comparison against the original instead of a vibe.
 
+The conversion flow and lessons run on this skill's bundled runtime
+(`scripts/steer.py`); authoring the rebuild additionally needs the
+installed `steer` CLI, checked below.
+
 ## Before you start
 
 1. **Check steer.** Run `steer --version`. If it is missing, ask the
    user to install it (`uv tool install steer-ai` or
    `pip install steer-ai`); do not hand-roll a lookalike scaffold.
-2. **Apply past lessons.** Run
-   `steer learn show --skill converting-skills` and follow what it
+2. **Set two paths.** `SKILL` is this skill's own directory (this
+   file's parent); `WS` is a scratch directory for this conversion.
+3. **Apply past lessons.** Run
+   `python3 "$SKILL/scripts/steer.py" learn show` and follow what it
    says; those lessons came from real previous conversions.
-3. **Building something new instead?** Creating a skill from scratch
+4. **Building something new instead?** Creating a skill from scratch
    or improving one you own is the building-skills skill's job, if
    installed; this one is for porting an existing skill faithfully.
 
@@ -36,15 +42,11 @@ comparison against the original instead of a vibe.
 ## Process
 
 The conversion runs behind an enforced flow: steps verify themselves
-against the conversion workspace, and you cannot skip ahead. Every flow
-command takes two paths: the flow file sits next to this SKILL.md, and
-the workspace is a scratch directory for this conversion.
+against the conversion workspace, and you cannot skip ahead. The flow
+lives next to this file and operates on the conversion workspace:
 
-    FLOW=<this skill's directory>/flow.toml
-    WS=<conversion workspace>
-
-    steer flow status --file "$FLOW" --workspace "$WS"
-    steer flow next   --file "$FLOW" --workspace "$WS"
+    python3 "$SKILL/scripts/steer.py" flow status --workspace "$WS"
+    python3 "$SKILL/scripts/steer.py" flow next --workspace "$WS"
 
 Lay the workspace out the way the flow verifies it:
 
@@ -71,7 +73,8 @@ The steps:
    `references/measuring.md` and write
    `out/conversion/comparison.md`; present the deltas to the user.
 
-Do NOT claim the conversion is done while `steer flow status` shows
+Do NOT claim the conversion is done while
+`python3 "$SKILL/scripts/steer.py" flow status --workspace "$WS"` shows
 incomplete steps.
 
 ## Learning
@@ -80,13 +83,13 @@ This skill improves with use. As you work:
 
 - The moment the user corrects you, or something fails and then works a
   different way, capture it:
-  `steer learn note "<one imperative rule>" --kind correction --skill converting-skills`
+  `python3 "$SKILL/scripts/steer.py" learn note "<one imperative rule>" --kind correction`
   Lessons are atomic rules ("Use X not Y when Z"), never secrets.
-- When a lesson from `steer learn show --skill converting-skills`
-  helped, run `steer learn confirm <id> --skill converting-skills`;
-  when one was wrong, `steer learn dispute <id> --skill converting-skills`.
+- When a lesson from `python3 "$SKILL/scripts/steer.py" learn show`
+  helped, run `python3 "$SKILL/scripts/steer.py" learn confirm <id>`;
+  when one was wrong, `python3 "$SKILL/scripts/steer.py" learn dispute <id>`.
 - Before finishing, record the outcome:
-  `steer learn run ok --skill converting-skills` (or `failed` with
+  `python3 "$SKILL/scripts/steer.py" learn run ok` (or `failed` with
   `--note`).
 
 If a `learnings.md` exists in this skill, read it too; those are
@@ -116,7 +119,7 @@ Load these only when that step of the work is hit:
 - Instructions in the original that print credential values (grepping
   `.env` files, echoing tokens) leak secrets into the transcript.
   Convert to name-only detection, export by substitution, and
-  `steer secrets` persistence, and say so in NOTICE.md.
+  persistence through the secrets component, and say so in NOTICE.md.
 - Do not restate flow directives in the body or vice versa; directives
   point at body sections, one source of truth.
 - Remove scaffold directories the rebuild does not use (`assets/`,
