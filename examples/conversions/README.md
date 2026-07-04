@@ -26,7 +26,3 @@ as-is:
 steer validate examples/conversions/webapp-testing
 steer install examples/conversions/webapp-testing
 ```
-
-The comparison harness under [`compare/`](compare) is self-contained
-and deterministic: five behavior checks plus a static metrics table,
-runnable on any laptop against fresh clones of the originals.

@@ -2,7 +2,8 @@
 
 Four famous open Agent Skills, rebuilt on steer with their content and
 behavior preserved, then measured against the originals. Every number
-below is reproducible from this directory; no LLM judging is involved.
+below comes from deterministic checks (no LLM judging); the method for
+each is described at the end.
 
 | Original | Source (license) | What it exercises |
 |---|---|---|
@@ -23,8 +24,8 @@ install.
 
 ## The scoreboard
 
-Six deterministic checks, run by `compare/behavior.py` through the
-rebuilds' own bundled runtimes:
+Six deterministic checks, run through the rebuilds' own bundled
+runtimes with plain `python3`:
 
 | Check | Original | Steer rebuild |
 |---|---|---|
@@ -151,11 +152,11 @@ compare flow.
 
 ## Static comparison
 
-From `compare/metrics.py` (tokens estimated at 4 chars/token, the
-same estimate `steer validate` uses). Hand-written lines are code the
-skill's author maintains; the generated runtime is written by
-`steer bundle`, executed, never read into context, and regenerated
-rather than edited:
+Tokens are estimated at 4 chars/token, the same estimate
+`steer validate` uses. Hand-written lines are code the skill's author
+maintains; the generated runtime is written by `steer bundle`,
+executed, never read into context, and regenerated rather than
+edited:
 
 | | body tokens | hand-written script lines | generated runtime lines | files nothing references | validate |
 |---|---|---|---|---|---|
@@ -194,24 +195,40 @@ for those, Anthropic's skill-creator eval loop and promptfoo's
 skill-used assertions are the current options, and the honest prior
 from the literature is that content-level gains are task-dependent.
 
-## Reproduce
+## Method
 
-```bash
-# originals (four shallow clones)
-mkdir -p /tmp/skill-originals && cd /tmp/skill-originals
-git clone --depth 1 https://github.com/anthropics/skills anthropic-skills
-git clone --depth 1 https://github.com/obra/superpowers superpowers
-git clone --depth 1 https://github.com/vercel-labs/agent-skills vercel-agent-skills
-git clone --depth 1 https://github.com/blader/humanizer humanizer
+The originals were measured from fresh shallow clones of
+anthropics/skills, obra/superpowers, vercel-labs/agent-skills, and
+blader/humanizer; the rebuilds from this directory. Each behavior
+check is a few lines of orchestration:
 
-# from this directory
-python3 compare/behavior.py --originals /tmp/skill-originals
-python3 compare/metrics.py  --originals /tmp/skill-originals
-```
+- **T1**: a wrapper script that spawns the real HTTP server as a
+  child (the shape of `npm run dev`). Original side: run
+  `with_server.py` around a trivial automation command, then probe the
+  child pid and the port after it exits. Rebuild side: `proc start`
+  with `--ready-port`, then `proc stop`, same probes.
+- **T2**: a server that writes 4096 build lines to stdout before
+  binding its port, run under a 10 second timeout on both sides.
+- **T3**: a server that prints "FATAL: DATABASE_URL is not set" to
+  stderr and exits 1; check whether that cause appears in each side's
+  output and how long the failure takes.
+- **T4**: drive the debugging flow in an empty workspace: `flow done
+  fix` first (expect refusal), then create the four `out/debug/`
+  artifacts in order, reading `flow status --json` between each.
+- **T5**: `secrets check VERCEL_TOKEN` against an isolated
+  `STEER_HOME`, first empty and then with the variable exported; then
+  a `.env` containing a canary token, running the original's
+  documented grep next to a names-only grep and searching both
+  outputs for the canary value.
+- **T6**: with draft and tells artifacts present, write an em dash
+  into `out/humanize/final.md` and read `flow status`; remove it and
+  read again.
 
-`behavior.py` needs Python 3.11+ and nothing else; the steer side runs
-through the rebuilds' bundled runtimes. `metrics.py` additionally
-needs `steer` on PATH (or `STEER_BIN=...`) for validation. Each
-rebuild's NOTICE.md records exactly what changed from its original;
-LICENSE.txt carries the original license where the source repository
-ships one.
+Static numbers: SKILL.md body tokens at 4 chars/token; script lines
+split into hand-written vs generated on the steer-runtime header;
+dead files found by scanning every text file for mentions of each
+sibling; validation via `steer validate --json`.
+
+Each rebuild's NOTICE.md records exactly what changed from its
+original; LICENSE.txt carries the original license where the source
+repository ships one.

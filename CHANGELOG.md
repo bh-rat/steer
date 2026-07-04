@@ -15,8 +15,7 @@ All notable changes to steer are documented here. The format follows
   references. Install: `steer install skills/converting-skills --user`.
 - `examples/conversions`: four widely used open skills rebuilt on
   steer with content preserved, each under its original license with
-  a NOTICE.md of deltas, plus a deterministic comparison harness and
-  measured results (COMPARISON.md).
+  a NOTICE.md of deltas and measured results (COMPARISON.md).
 - `skills/building-skills`: steer's own skill for building skills. It
   runs the whole lifecycle behind an enforced flow: design (trigger,
   components, structure), scaffold with `steer new`, write, a gate that
