@@ -20,9 +20,9 @@ const steps: Step[] = [
     lines: [
       {
         kind: 'cmd',
-        text: 'steer new payment-report --with secrets,context,flow,learn \\\n    --steps fetch,review,report --scripts',
+        text: 'steer new pr-review --with secrets,context,flow,learn \\\n    --secrets GITHUB_TOKEN --steps fetch,review,post --scripts',
       },
-      { kind: 'out', text: 'Created skill at payment-report' },
+      { kind: 'out', text: 'Created skill at pr-review' },
       { kind: 'out', text: '  + SKILL.md' },
       { kind: 'out', text: '  + flow.toml' },
       { kind: 'out', text: '  + scripts/steer.py' },
@@ -37,12 +37,12 @@ const steps: Step[] = [
     desc: 'Flow steps verify against reality. Marking a step done out of order is refused, not discouraged.',
     lines: [
       { kind: 'cmd', text: 'steer flow status' },
-      { kind: 'out', text: '  PAYMENT-REPORT WORKFLOW' },
+      { kind: 'out', text: '  PR-REVIEW WORKFLOW' },
       { kind: 'out', text: '  ─────────────────────────────────────────' },
-      { kind: 'out', text: '  Progress: 0/3 steps  ● fetch  ○ review  ○ report' },
+      { kind: 'out', text: '  Progress: 0/3 steps  ● fetch  ○ review  ○ post' },
       { kind: 'out', text: '' },
       { kind: 'out', text: '  ▸ Next: fetch' },
-      { kind: 'out', text: '    Run scripts/fetch.py --month <month>; it writes out/charges.json' },
+      { kind: 'out', text: '    Run scripts/fetch.py --pr <number>; it writes out/diff.json' },
       { kind: 'cmd', text: 'steer flow done review' },
       {
         kind: 'err',
@@ -56,19 +56,19 @@ const steps: Step[] = [
     title: 'Hand off secrets',
     desc: 'The agent gets the exact command to relay to the human. Values never enter the chat or the skill directory.',
     lines: [
-      { kind: 'cmd', text: 'steer secrets check PAYMENT_REPORT_API_KEY' },
+      { kind: 'cmd', text: 'steer secrets check GITHUB_TOKEN' },
       {
         kind: 'out',
-        text: "Secret 'PAYMENT_REPORT_API_KEY' is not set for skill 'payment-report'.",
+        text: "Secret 'GITHUB_TOKEN' is not set for skill 'pr-review'.",
       },
       { kind: 'out', text: 'Ask the user to provide it, then store it with:' },
       {
         kind: 'out',
-        text: '  steer secrets set PAYMENT_REPORT_API_KEY --skill payment-report',
+        text: '  steer secrets set GITHUB_TOKEN --skill pr-review',
       },
       {
         kind: 'out',
-        text: '(or export PAYMENT_REPORT_API_KEY=... in the environment)',
+        text: '(or export GITHUB_TOKEN=... in the environment)',
       },
     ],
   },
@@ -79,13 +79,13 @@ const steps: Step[] = [
     lines: [
       {
         kind: 'cmd',
-        text: 'steer learn note "Use the EU endpoint for EU accounts" --kind correction',
+        text: 'steer learn note "Skip vendored and generated files in the diff" --kind correction',
       },
       { kind: 'ok', text: '✓ Lesson recorded (id 1)' },
       { kind: 'cmd', text: 'steer learn show' },
-      { kind: 'out', text: '## Lessons from previous runs (payment-report)' },
-      { kind: 'out', text: '- [1] Use the EU endpoint for EU accounts' },
-      { kind: 'out', text: '- [2] Validate ledger columns before summing' },
+      { kind: 'out', text: '## Lessons from previous runs (pr-review)' },
+      { kind: 'out', text: '- [1] Skip vendored and generated files in the diff' },
+      { kind: 'out', text: '- [2] Cite file and line in every finding' },
       {
         kind: 'out',
         text: '(helped? steer learn confirm <id> · wrong? steer learn dispute <id>)',

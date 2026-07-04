@@ -40,7 +40,7 @@ steer store del last_run
 steer store keys
 
 # JSON documents
-steer store insert runs '{"file": "may.csv", "ok": true}'
+steer store insert runs '{"pr": 142, "ok": true}'
 steer store find runs --where ok=true --limit 10
 steer store tables
 
@@ -58,14 +58,14 @@ JSON, which scripts and agents parse directly.
 ```python
 from steer import Store
 
-with Store("stripe-report") as store:                  # user scope
+with Store("pr-review") as store:                      # user scope
     store.put("last_run", {"at": "2026-06-11", "ok": True})
     store.get("last_run")
-    store.insert("runs", {"month": "may", "total": 1200})
-    store.find("runs", {"month": "may"})
-    store.query("SELECT json_extract(data,'$.total') AS t FROM runs")
+    store.insert("runs", {"pr": 142, "findings": 3})
+    store.find("runs", {"pr": 142})
+    store.query("SELECT json_extract(data,'$.findings') AS n FROM runs")
 
-ws = Store("stripe-report", scope="workspace", workspace=".")
+ws = Store("pr-review", scope="workspace", workspace=".")
 ```
 
 Inside a skill, sibling scripts import the same API from the bundled

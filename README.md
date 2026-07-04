@@ -52,15 +52,15 @@ Requires Python ≥ 3.11. No runtime dependencies.
 ## Quickstart
 
 ```bash
-steer new stripe-report \
-  --description "Generates revenue reports from Stripe. Use when the user asks for revenue, MRR, or payment reporting." \
-  --with secrets,context,flow,learn --scripts
+steer new pr-review \
+  --description "Reviews a pull request and posts findings. Use when the user asks for a PR review, code review, or pre-merge check." \
+  --with secrets,context,flow,learn --secrets GITHUB_TOKEN --scripts
 ```
 
 This scaffolds a spec-valid skill:
 
 ```
-stripe-report/
+pr-review/
 ├── SKILL.md       # frontmatter + body with the components wired in
 ├── flow.toml      # declarative steps with verify conditions
 └── scripts/
@@ -76,7 +76,7 @@ the skill's own bundled runtime:
 > 2. **Apply past lessons.** Run `python3 scripts/steer.py learn show`;
 >    those lessons came from real previous runs.
 > 3. **Check credentials.** Run `python3 scripts/steer.py secrets check
->    STRIPE_REPORT_API_KEY`. If one is missing, ask the user to run the
+>    GITHUB_TOKEN`. If one is missing, ask the user to run the
 >    `secrets set` command it prints (never ask them to paste the value
 >    into the chat).
 > 4. **Follow the flow.** `python3 scripts/steer.py flow status` → do the
@@ -88,9 +88,9 @@ sets `disable-model-invocation: true` and validation adapts.
 Then:
 
 ```bash
-steer validate stripe-report     # spec rules, broken refs, secret hygiene
-steer install stripe-report      # → .claude/skills/ (project scope)
-steer package stripe-report      # → validated zip for the Claude API / claude.ai
+steer validate pr-review     # spec rules, broken refs, secret hygiene
+steer install pr-review      # → .claude/skills/ (project scope)
+steer package pr-review      # → validated zip for the Claude API / claude.ai
 ```
 
 ## Examples
@@ -112,14 +112,14 @@ them. Resolution order: env var → OS keychain (macOS `security` /
 Linux `secret-tool`) → `0600` file under `~/.steer/`.
 
 ```bash
-python3 scripts/steer.py secrets check STRIPE_API_KEY    # agent checks (bundled runtime)
-steer secrets set STRIPE_API_KEY --skill stripe-report   # human sets (hidden prompt)
+python3 scripts/steer.py secrets check GITHUB_TOKEN    # agent checks (bundled runtime)
+steer secrets set GITHUB_TOKEN --skill pr-review       # human sets (hidden prompt)
 ```
 
 ```python
 from steer import Secrets
-key = Secrets("stripe-report").require("STRIPE_API_KEY",
-                                       hint="dashboard.stripe.com/apikeys")
+key = Secrets("pr-review").require("GITHUB_TOKEN",
+                                   hint="github.com/settings/tokens")
 # missing -> MissingSecretError whose message tells the agent
 # exactly what command to ask the human to run
 ```
@@ -127,9 +127,9 @@ key = Secrets("stripe-report").require("STRIPE_API_KEY",
 ### `steer store`: per-skill SQLite
 
 ```bash
-steer store put last_run '"2026-06-11"' --skill stripe-report
-steer store insert runs '{"month": "may", "total": 1200}' --skill stripe-report
-steer store find runs --where month=may --skill stripe-report
+steer store put last_run '"2026-06-11"' --skill pr-review
+steer store insert runs '{"pr": 142, "findings": 3}' --skill pr-review
+steer store find runs --where pr=142 --skill pr-review
 ```
 
 KV + JSON-document tables + raw SQL. Two scopes: `user`
@@ -197,7 +197,7 @@ the start of every run, and the author promotes the keepers into the shipped
 skill.
 
 ```bash
-steer learn note "Use the EU endpoint for EU accounts" --kind correction
+steer learn note "Skip vendored and generated files in the diff" --kind correction
 steer learn show          # ranked digest the SKILL.md tells the agent to read
 steer learn confirm 3     # helped → stronger;  dispute → weaker, auto-archives
 steer learn promote 3     # human-gated: append to the skill's learnings.md

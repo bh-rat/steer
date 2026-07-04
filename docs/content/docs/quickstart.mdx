@@ -17,13 +17,13 @@ Python ≥ 3.11, zero dependencies.
 ## 1. Scaffold
 
 ```bash
-steer new stripe-report \
-  --description "Generates revenue reports from Stripe. Use when the user asks for revenue, MRR, or payment reporting." \
-  --with secrets,context,flow --scripts
+steer new pr-review \
+  --description "Reviews a pull request and posts findings. Use when the user asks for a PR review, code review, or pre-merge check." \
+  --with secrets,context,flow --secrets GITHUB_TOKEN --scripts
 ```
 
 ```text
-Created skill at stripe-report
+Created skill at pr-review
   + SKILL.md
   + flow.toml
   + scripts/steer.py
@@ -49,31 +49,31 @@ Say what it does and when to use it, with the words users actually say.
 Then define the real process in `flow.toml`:
 
 ```toml
-name = "stripe-report"
+name = "pr-review"
 
 [[steps]]
 id = "fetch"
-description = "Pull the month's charges"
-directive = "Run scripts/fetch.py --month <month>; it writes out/charges.json"
+description = "Pull the PR diff"
+directive = "Run scripts/fetch.py --pr <number>; it writes out/diff.json"
 command = "python3 scripts/fetch.py"
 
 [steps.verify]
-file_exists = "out/charges.json"
+file_exists = "out/diff.json"
 
 [[steps]]
 id = "review"
-description = "Sanity-check the data"
-directive = "Open out/charges.json; confirm totals are plausible before reporting"
+description = "Confirm the findings are real"
+directive = "Read out/diff.json; draft findings and confirm each one is real before posting"
 requires = ["fetch"]
 
 [[steps]]
-id = "report"
-description = "Produce the report"
-directive = "Run scripts/report.py; it writes out/report.md"
+id = "post"
+description = "Post the review"
+directive = "Run scripts/post.py; it posts the review and writes out/review.json"
 requires = ["review"]
 
 [steps.verify]
-file_exists = "out/report.md"
+file_exists = "out/review.json"
 ```
 
 Steps with `[steps.verify]` complete only when reality matches
@@ -85,11 +85,11 @@ incomplete.
 ## 3. Try the runtime
 
 ```bash
-cd stripe-report
+cd pr-review
 
 steer context                       # what the agent sees first
-steer secrets check STRIPE_API_KEY  # exit 1 + exact remediation command
-steer secrets set STRIPE_API_KEY    # hidden prompt; lands in the OS keychain
+steer secrets check GITHUB_TOKEN    # exit 1 + exact remediation command
+steer secrets set GITHUB_TOKEN      # hidden prompt; lands in the OS keychain
 
 steer flow status --workspace ~/work/acme   # progress + current directive
 ```
@@ -99,12 +99,12 @@ commands `python3 scripts/steer.py ...`, which works on machines where
 steer was never installed.
 
 ```text
-  STRIPE-REPORT WORKFLOW
+  PR-REVIEW WORKFLOW
   ─────────────────────────────────────────
-  Progress: 0/3 steps  ● fetch  ○ review  ○ report
+  Progress: 0/3 steps  ● fetch  ○ review  ○ post
 
   ▸ Next: fetch
-    Run scripts/fetch.py --month <month>; it writes out/charges.json
+    Run scripts/fetch.py --pr <number>; it writes out/diff.json
 
     Run: python3 scripts/fetch.py
 ```
@@ -113,8 +113,8 @@ steer was never installed.
 
 ```bash
 steer validate            # spec rules + broken refs + budgets + hygiene
-steer install . --user    # → ~/.claude/skills/stripe-report
-steer package             # → stripe-report.zip for the Claude API / claude.ai
+steer install . --user    # → ~/.claude/skills/pr-review
+steer package             # → pr-review.zip for the Claude API / claude.ai
 ```
 
 `steer validate` fails the build on spec violations (bad name, missing or
@@ -125,7 +125,7 @@ one is refused.
 
 ## 5. Use it
 
-In Claude Code, the skill is now invocable as `/stripe-report` and triggers
+In Claude Code, the skill is now invocable as `/pr-review` and triggers
 automatically when a request matches its description. Other clients pick it
 up from `.claude/skills` / `.agents/skills` per their discovery rules
 (`steer install --dest` targets any root).

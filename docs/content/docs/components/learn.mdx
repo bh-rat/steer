@@ -39,8 +39,8 @@ spelling too.
    they happen (a user correction, a failure that then worked another way):
 
    ```bash
-   steer learn note "Use the EU endpoint for EU accounts" \
-     --kind correction --context "EU accounts" --evidence "run 2026-06-11"
+   steer learn note "Skip vendored and generated files in the diff" \
+     --kind correction --context "large diffs" --evidence "run 2026-06-11"
    ```
 
 2. **Apply**: at the start of every run the agent reads the bounded digest:
@@ -50,9 +50,9 @@ spelling too.
    ```
 
    ```text
-   ## Lessons from previous runs (stripe-report)
-   - [3] ★ Use the EU endpoint for EU accounts (when: EU accounts)
-   - [1] Validate field names before filling [from v0.1.0]
+   ## Lessons from previous runs (pr-review)
+   - [3] ★ Skip vendored and generated files in the diff (when: large diffs)
+   - [1] Cite file and line in every finding [from v0.1.0]
    - …and 4 more: steer learn review
    (helped? steer learn confirm <id> · wrong? steer learn dispute <id>)
    ```
@@ -98,11 +98,11 @@ spelling too.
 can read or grep the full picture without the CLI:
 
 ```markdown
-# Learnings: stripe-report
+# Learnings: pr-review
 Updated: 2026-06-11 · runs: 14 (86% ok) · 1 pinned · 6 active · 2 promoted · 3 archived
 
 ## Active
-- [3] EU accounts must use the EU endpoint (correction, +4, when: EU accounts, last: 2026-06-11)
+- [3] Skip vendored and generated files in the diff (correction, +4, when: large diffs, last: 2026-06-11)
 ```
 
 The DB stays the source of truth (counters need transactions); the mirror is
@@ -176,7 +176,7 @@ generated SKILL.md says so next to it.
 ```bash
 steer learn run ok                 # or: failed --note "timeout on step 3"
 steer learn stats
-# stripe-report: 14 runs recorded (12 ok, 2 failed, success 86%)
+# pr-review: 14 runs recorded (12 ok, 2 failed, success 86%)
 # lessons: 6 active, 1 pinned, 2 promoted, 3 archived
 # last run: 2026-07-03T18:20:11+00:00
 ```
@@ -192,11 +192,11 @@ and what has it learned.
 ```python
 from steer import Learnings
 
-with Learnings("stripe-report") as learn:
+with Learnings("pr-review") as learn:
     learn.note("Use bulk endpoints over per-item calls",
                kind="preference", context="more than 50 items")
     print(learn.digest(budget=1500))
     learn.confirm(3)
-    learn.promote(3, "./stripe-report")
+    learn.promote(3, "./pr-review")
     learn.stats()
 ```

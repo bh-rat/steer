@@ -36,7 +36,7 @@ The open spec's hard rules, which `steer validate` enforces:
 steer new my-skill \
   --description "..." \
   --with secrets,store,context,flow,proc,learn \
-  --secrets STRIPE_API_KEY,STRIPE_ACCOUNT \
+  --secrets GITHUB_TOKEN,SLACK_WEBHOOK \
   --steps fetch,transform,review \
   --scripts --refs \
   --license MIT --author "Jane"     # --dir <parent> to scaffold elsewhere

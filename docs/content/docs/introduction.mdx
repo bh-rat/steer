@@ -57,7 +57,7 @@ with no code at all, and whoever runs the skill needs Python, not steer.
 ## What a steer-built skill looks like
 
 ```text
-stripe-report/
+pr-review/
 ├── SKILL.md       # generated, spec-valid, components wired in
 ├── flow.toml      # declarative steps with verify conditions
 └── scripts/
@@ -69,7 +69,7 @@ The generated SKILL.md instructs the agent:
 
 1. Ground yourself: `python3 scripts/steer.py context`
 2. Check credentials: `python3 scripts/steer.py secrets check
-   STRIPE_REPORT_API_KEY`; if missing, ask the human to run the
+   GITHUB_TOKEN`; if missing, ask the human to run the
    `secrets set` command it prints
 3. Follow the flow: `python3 scripts/steer.py flow next`, until
    everything verifies complete
