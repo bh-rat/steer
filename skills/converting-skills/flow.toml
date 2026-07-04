@@ -1,0 +1,55 @@
+# Declarative flow for this skill. The agent drives it with the bundled
+# runtime:
+#   python3 "$SKILL/scripts/steer.py" flow status | next | done <id>
+#   (always with --workspace "$WS"; see SKILL.md)
+#
+# The conversion workspace the steps verify against:
+#   original/          vendored copy of the source skill
+#   rebuild/<name>/    the steer rebuild
+#   out/conversion/    triage.md, comparison.md
+
+name = "converting-skills"
+
+[[steps]]
+id = "triage"
+description = "Inventory, license, and component map"
+directive = "Inventory the original (body, scripts, references, extras), identify its license per skill not per repo, and map every piece of hand-rolled machinery to a steer component (references/component-mapping.md, references/licensing.md). Record it all in out/conversion/triage.md. If the license forbids derivative works, stop and tell the user."
+
+[steps.verify]
+file_exists = "out/conversion/triage.md"
+
+[[steps]]
+id = "scaffold"
+description = "steer new with the mapped components"
+directive = "Scaffold with steer new <original-name> --dir rebuild, passing exactly the components triage mapped (--with, and --secrets/--steps where they apply). Keep the original's name so the rebuild is a drop-in replacement."
+requires = ["triage"]
+
+[steps.verify]
+glob = "rebuild/*/SKILL.md"
+
+[[steps]]
+id = "port"
+description = "Move content, swap machinery, record deltas"
+directive = "Port the original into the scaffold: keep its voice and rules verbatim where they are the skill's value, replace hand-rolled machinery with the generated component instructions, move load-on-demand material behind references/ pointers, carry the license file, and record every delta in the rebuild's NOTICE.md."
+requires = ["scaffold"]
+
+[steps.verify]
+glob = "rebuild/*/NOTICE.md"
+
+[[steps]]
+id = "verify"
+description = "Validation gate"
+directive = "Make steer validate pass clean on the rebuild; fix findings rather than arguing with them."
+requires = ["port"]
+
+[steps.verify]
+command = "test -e rebuild/*/NOTICE.md && steer validate rebuild/*"
+
+[[steps]]
+id = "compare"
+description = "Measure the rebuild against the original"
+directive = "Write out/conversion/comparison.md using the checklist in references/measuring.md: validate findings both sides, body token estimates, files nothing references, and which failure modes now fail loudly instead of silently. Present the deltas to the user."
+requires = ["verify"]
+
+[steps.verify]
+file_exists = "out/conversion/comparison.md"

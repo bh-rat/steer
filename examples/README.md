@@ -58,6 +58,15 @@ one reference. `--user-invoked` sets `disable-model-invocation: true` (you
 call it; it never auto-triggers), and the type-picking cheatsheet lives
 behind a context pointer in `references/`, loaded only when needed.
 
+## rebuilds/: sample skills, rebuilt and measured
+
+The two skills above were written from scratch to show what steer
+generates. [`rebuilds/`](rebuilds) is the other direction: a sample of
+third-party skills rebuilt on steer with their content preserved, each
+under its original license (see the NOTICE.md in each folder), with
+measured results in
+[`rebuilds/COMPARISON.md`](rebuilds/COMPARISON.md).
+
 ## Verified end-to-end
 
 `repo-health` has been executed by an agent in a sandboxed workspace,

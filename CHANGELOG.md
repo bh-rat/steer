@@ -8,6 +8,14 @@ All notable changes to steer are documented here. The format follows
 
 ### Added
 
+- `skills/converting-skills`: the conversion counterpart to
+  building-skills. Ports an existing skill onto steer behind a gated
+  flow (license triage, component mapping, scaffold, faithful port,
+  live validation, measured comparison), with the playbook in its
+  references. Install: `steer install skills/converting-skills --user`.
+- `examples/rebuilds`: four sample open skills rebuilt on
+  steer with content preserved, each under its original license with
+  a NOTICE.md of deltas and measured results (COMPARISON.md).
 - `skills/building-skills`: steer's own skill for building skills. It
   runs the whole lifecycle behind an enforced flow: design (trigger,
   components, structure), scaffold with `steer new`, write, a gate that

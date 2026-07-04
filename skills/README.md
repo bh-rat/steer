@@ -33,6 +33,21 @@ normal steer-built skill: authoring drives `steer new`, `steer
 validate`, and `steer install`, so the installed CLI has to be present
 (the skill checks and says so).
 
+## converting-skills
+
+The conversion counterpart. Once installed, "port this skill to steer"
+walks the agent through a gated conversion: triage (inventory, license
+check, component map), scaffold with `steer new`, a faithful port that
+keeps the original's voice and records every delta in a NOTICE.md, a
+live `steer validate` gate, and a measured comparison against the
+original. Its `references/` distill the playbook from the four real
+conversions in [`examples/rebuilds`](../examples/rebuilds); the
+humanizer rebuild there was produced by this skill end to end.
+
+Like building-skills it takes only flow and learn, runs them from its
+bundled runtime, and needs the installed CLI only for the authoring
+commands it drives.
+
 Relation to [`examples/`](../examples): examples show what steer
 generates and how finished skills read; `skills/` is tooling you
 install and use.

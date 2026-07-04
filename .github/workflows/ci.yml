@@ -56,5 +56,10 @@ jobs:
       - name: Validate bundled skills and examples
         run: |
           steer validate skills/building-skills
+          steer validate skills/converting-skills
           steer validate examples/repo-health
           steer validate examples/commit-message
+          steer validate examples/rebuilds/webapp-testing
+          steer validate examples/rebuilds/systematic-debugging
+          steer validate examples/rebuilds/vercel-cli-with-tokens
+          steer validate examples/rebuilds/humanizer

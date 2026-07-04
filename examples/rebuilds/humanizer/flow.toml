@@ -1,0 +1,31 @@
+# The draft, audit, final loop from Process and Output, machine-gated.
+#   python3 scripts/steer.py flow status | next   (run inside the workspace)
+
+name = "humanizer"
+
+[[steps]]
+id = "draft"
+description = "Draft rewrite covering everything the original covers"
+directive = "Identify every pattern from SKILL.md in the input and write the draft rewrite to out/humanize/draft.md; same coverage as the original text."
+
+[steps.verify]
+file_exists = "out/humanize/draft.md"
+
+[[steps]]
+id = "audit"
+description = "Name the remaining tells in your own draft"
+directive = "Ask: what makes the draft still obviously AI generated? Write the remaining tells, briefly, to out/humanize/tells.md."
+requires = ["draft"]
+
+[steps.verify]
+file_exists = "out/humanize/tells.md"
+
+[[steps]]
+id = "final"
+description = "Final rewrite; no em or en dashes survive"
+directive = "Revise the draft into out/humanize/final.md, addressing every tell; the step completes only when the file exists and contains no em or en dashes (rule 14)."
+requires = ["audit"]
+
+[steps.verify]
+file_exists = "out/humanize/final.md"
+command = "! grep -q -e \"—\" -e \"–\" out/humanize/final.md"
