@@ -34,7 +34,7 @@ too; there is nothing uv-specific here.)
    network, no real `~/.steer`).
 2. `uvx ruff check steer tests`: clean.
 3. If you touched the CLI surface or on-disk formats, update the docs
-   (`docs/`) and `CHANGELOG.md` in the same PR.
+   (`docs/content/docs/`) and `CHANGELOG.md` in the same PR.
 
 ## Good first contributions
 

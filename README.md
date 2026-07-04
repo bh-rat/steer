@@ -15,17 +15,20 @@ about credentials, persistence, context gathering, step enforcement, or
 managed processes. Every serious skill hand-rolls some of these.
 
 Steer provides them as components, plus the authoring tools to scaffold,
-validate, package, and install skills. Zero dependencies; Python stdlib only.
+validate, package, and install skills. Zero dependencies; Python stdlib
+only, and skills carry their runtime with them: `steer new` writes it into
+the skill as `scripts/steer.py`, so running a steer-built skill needs
+Python, not steer.
 
 ```
-┌─ author-time ──────────────────────┐  ┌─ runtime (CLI or library) ─────────┐
+┌─ author-time ──────────────────────┐  ┌─ runtime (bundled into the skill) ─┐
 │ steer new        scaffold a skill  │  │ steer secrets   credentials        │
-│ steer validate   spec + hygiene    │  │ steer store     per-skill SQLite   │
-│ steer package    API-ready zip     │  │ steer context   situational recon  │
-│ steer install    into skill dirs   │  │ steer flow      enforced steps     │
-│ steer list       what's installed  │  │ steer proc      managed processes  │
-└────────────────────────────────────┘  │ steer learn     skills that learn  │
-                                        └────────────────────────────────────┘
+│ steer bundle     vendored runtime  │  │ steer store     per-skill SQLite   │
+│ steer validate   spec + hygiene    │  │ steer context   situational recon  │
+│ steer package    API-ready zip     │  │ steer flow      enforced steps     │
+│ steer install    into skill dirs   │  │ steer proc      managed processes  │
+│ steer list       what's installed  │  │ steer learn     skills that learn  │
+└────────────────────────────────────┘  └────────────────────────────────────┘
 ```
 
 ## Why
@@ -49,32 +52,35 @@ Requires Python ≥ 3.11. No runtime dependencies.
 ## Quickstart
 
 ```bash
-steer new stripe-report \
-  --description "Generates revenue reports from Stripe. Use when the user asks for revenue, MRR, or payment reporting." \
-  --with secrets,context,flow,learn --scripts
+steer new pr-review \
+  --description "Reviews a pull request and posts findings. Use when the user asks for a PR review, code review, or pre-merge check." \
+  --with secrets,context,flow,learn --secrets GITHUB_TOKEN --scripts
 ```
 
 This scaffolds a spec-valid skill:
 
 ```
-stripe-report/
+pr-review/
 ├── SKILL.md       # frontmatter + body with the components wired in
 ├── flow.toml      # declarative steps with verify conditions
 └── scripts/
+    ├── steer.py   # bundled runtime: exactly the chosen components
     └── example.py # non-interactive, JSON result envelope on stdout
 ```
 
-The generated `SKILL.md` already tells the agent how to behave:
+The generated `SKILL.md` already tells the agent how to behave, through
+the skill's own bundled runtime:
 
-> 1. **Ground yourself.** Run `steer context` and read the snapshot.
-> 2. **Apply past lessons.** Run `steer learn show`; those lessons came
->    from real previous runs.
-> 3. **Check credentials.** Run `steer secrets check STRIPE_REPORT_API_KEY
->    --skill stripe-report`. If missing, ask the user to run
->    `steer secrets set ...` (never ask them to paste the value into the
->    chat).
-> 4. **Follow the flow.** `steer flow status` → do the step → steps verify
->    themselves against reality; you cannot skip ahead.
+> 1. **Ground yourself.** Run `python3 scripts/steer.py context` and read
+>    the snapshot.
+> 2. **Apply past lessons.** Run `python3 scripts/steer.py learn show`;
+>    those lessons came from real previous runs.
+> 3. **Check credentials.** Run `python3 scripts/steer.py secrets check
+>    GITHUB_TOKEN`. If one is missing, ask the user to run the
+>    `secrets set` command it prints (never ask them to paste the value
+>    into the chat).
+> 4. **Follow the flow.** `python3 scripts/steer.py flow status` → do the
+>    step → steps verify themselves against reality; you cannot skip ahead.
 
 For a skill only the human should trigger, `steer new --user-invoked`
 sets `disable-model-invocation: true` and validation adapts.
@@ -82,9 +88,9 @@ sets `disable-model-invocation: true` and validation adapts.
 Then:
 
 ```bash
-steer validate stripe-report     # spec rules, broken refs, secret hygiene
-steer install stripe-report      # → .claude/skills/ (project scope)
-steer package stripe-report      # → validated zip for the Claude API / claude.ai
+steer validate pr-review     # spec rules, broken refs, secret hygiene
+steer install pr-review      # → .claude/skills/ (project scope)
+steer package pr-review      # → validated zip for the Claude API / claude.ai
 ```
 
 ## Examples
@@ -106,14 +112,14 @@ them. Resolution order: env var → OS keychain (macOS `security` /
 Linux `secret-tool`) → `0600` file under `~/.steer/`.
 
 ```bash
-steer secrets check STRIPE_API_KEY --skill stripe-report   # agent checks
-steer secrets set STRIPE_API_KEY --skill stripe-report     # human sets (hidden prompt)
+python3 scripts/steer.py secrets check GITHUB_TOKEN    # agent checks (bundled runtime)
+steer secrets set GITHUB_TOKEN --skill pr-review       # human sets (hidden prompt)
 ```
 
 ```python
 from steer import Secrets
-key = Secrets("stripe-report").require("STRIPE_API_KEY",
-                                       hint="dashboard.stripe.com/apikeys")
+key = Secrets("pr-review").require("GITHUB_TOKEN",
+                                   hint="github.com/settings/tokens")
 # missing -> MissingSecretError whose message tells the agent
 # exactly what command to ask the human to run
 ```
@@ -121,9 +127,9 @@ key = Secrets("stripe-report").require("STRIPE_API_KEY",
 ### `steer store`: per-skill SQLite
 
 ```bash
-steer store put last_run '"2026-06-11"' --skill stripe-report
-steer store insert runs '{"month": "may", "total": 1200}' --skill stripe-report
-steer store find runs --where month=may --skill stripe-report
+steer store put last_run '"2026-06-11"' --skill pr-review
+steer store insert runs '{"pr": 142, "findings": 3}' --skill pr-review
+steer store find runs --where pr=142 --skill pr-review
 ```
 
 KV + JSON-document tables + raw SQL. Two scopes: `user`
@@ -191,7 +197,7 @@ the start of every run, and the author promotes the keepers into the shipped
 skill.
 
 ```bash
-steer learn note "Use the EU endpoint for EU accounts" --kind correction
+steer learn note "Skip vendored and generated files in the diff" --kind correction
 steer learn show          # ranked digest the SKILL.md tells the agent to read
 steer learn confirm 3     # helped → stronger;  dispute → weaker, auto-archives
 steer learn promote 3     # human-gated: append to the skill's learnings.md
@@ -239,9 +245,11 @@ directory match, description 1-1024 chars, no XML), progressive-disclosure
 budgets (<500-line body), broken file references, portability (Claude-Code-
 only frontmatter), thin trigger descriptions, duplicated paragraphs across
 SKILL.md and references (keep one source of truth), orphaned `references/`
-files nothing points to, and secret hygiene: credential-looking files
-inside a skill are warnings normally and hard errors at packaging time.
-`steer package` refuses to ship them.
+files nothing points to, bundled-runtime integrity (a missing, stale, or
+hand-edited `scripts/steer.py`), and secret hygiene: credential-looking
+files inside a skill are warnings normally and hard errors at packaging
+time. `steer package` refuses to ship them, and refreshes a stale bundle
+before zipping.
 
 ## Library use
 
@@ -264,11 +272,12 @@ SDK, PyPI release.
 
 ## Docs & contributing
 
-Full documentation lives in [`docs/`](docs/) (introduction, quickstart, a
-page per component, and the authoring guide, including the checklist for
-writing skill bodies: trigger, structure, steering, pruning). Contributions
-are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go to
-[SECURITY.md](SECURITY.md).
+Full documentation lives in [`docs/`](docs/), a Fumadocs site whose content
+is under [`docs/content/docs/`](docs/content/docs/) (introduction,
+quickstart, a page per component, and the authoring guide, including the
+checklist for writing skill bodies: trigger, structure, steering, pruning).
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Security
+reports go to [SECURITY.md](SECURITY.md).
 
 ## License
 

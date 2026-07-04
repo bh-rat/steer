@@ -13,6 +13,20 @@ buggiest code they carried.
 `<workspace>/.steer/proc/<name>/`: `meta.json` (pid, command, readiness)
 and the captured `log`. `start --cwd <dir>` sets the working directory.
 
+## When to use it
+
+- The skill starts anything that outlives a single command: a dev
+  server, a preview, a worker that later steps talk to.
+- Anthropic's [webapp-testing](https://github.com/anthropics/skills)
+  ships `scripts/with_server.py`, 105 lines of exactly this lifecycle,
+  and it shows where hand-rolls crack: it terminates the process it
+  spawned rather than the group (a wrapper like `npm run dev` dies, the
+  server it started survives), and it pipes server output to a buffer
+  nobody drains (a chatty server stalls mid-startup). `steer proc` logs
+  to a file and stops the whole group.
+- Skip it for commands that finish on their own. `proc` is for the
+  things you would otherwise track with a PID file.
+
 ## CLI
 
 ```bash
@@ -70,9 +84,9 @@ finally:
 `steer new --with proc` generates:
 
 ```text
-Start helpers through steer so nothing leaks or zombies:
+Start helpers through the bundled runtime so nothing leaks or zombies:
 
-    steer proc start dev --ready-port 5173 -- npm run dev
-    steer proc status dev
-    steer proc stop dev      # always stop what you started
+    python3 scripts/steer.py proc start dev --ready-port 5173 -- npm run dev
+    python3 scripts/steer.py proc status dev
+    python3 scripts/steer.py proc stop dev      # always stop what you started
 ```

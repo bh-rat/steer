@@ -13,6 +13,7 @@ my-skill/
 ├── SKILL.md          # required
 ├── flow.toml         # steer: declarative process (optional)
 ├── scripts/          # executed, not read; code never enters context
+│   └── steer.py      # bundled runtime: the skill's own copy of its components
 ├── references/       # loaded on demand
 └── assets/           # templates, schemas, images
 ```
@@ -27,7 +28,7 @@ The open spec's hard rules, which `steer validate` enforces:
 | `compatibility` | optional · ≤500 chars |
 | `metadata` | optional string map · `version` lives here by convention |
 | `allowed-tools` | optional · experimental, per-client behavior |
-| body | guidance: <500 lines / ~5k tokens; it all enters context on trigger |
+| body | guidance: \<500 lines / ~5k tokens; it all enters context on trigger |
 
 ## `steer new`
 
@@ -35,7 +36,7 @@ The open spec's hard rules, which `steer validate` enforces:
 steer new my-skill \
   --description "..." \
   --with secrets,store,context,flow,proc,learn \
-  --secrets STRIPE_API_KEY,STRIPE_ACCOUNT \
+  --secrets GITHUB_TOKEN,SLACK_WEBHOOK \
   --steps fetch,transform,review \
   --scripts --refs \
   --license MIT --author "Jane"     # --dir <parent> to scaffold elsewhere
@@ -59,6 +60,29 @@ SKILL.md as agent instructions (the patterns above each component page),
 `flow.toml` when flow is selected, and an example script that follows the
 agentic-interface rules. Scaffolds validate error-free out of the box
 (Claude-Code-only opt-ins like `--auto-learn` add portability notes).
+
+Choosing components also writes `scripts/steer.py`, the bundled runtime:
+a generated, self-contained copy of exactly those components (Python
+≥ 3.11, stdlib only) that the SKILL.md invokes as
+`python3 scripts/steer.py <component> ...`. Whoever runs the skill needs
+Python, not steer.
+
+## `steer bundle`
+
+```bash
+steer bundle [path] --with secrets,store    # write or refresh the bundle
+steer bundle [path]                         # refresh; components from the header
+```
+
+The way into an existing skill: `steer bundle --with secrets` drops a
+runtime holding just that component next to your scripts, and the rest of
+the skill stays as it was. Bundles are deterministic for a given steer
+version and component set, and a `# steer-runtime:` header records both,
+so `steer validate` can verify a bundle by regenerating it. Regenerate
+rather than edit; hand edits are refused at packaging time.
+
+Sibling scripts can import the library from the bundle next to them
+(`from steer import Store`) instead of depending on an installed steer.
 
 ## Writing the body
 
@@ -114,7 +138,7 @@ Beyond the spec table above:
 | Broken `[link](path)` targets | error |
 | Backticked `scripts/...` mentions that don't exist | warning |
 | Body over 500 lines / ~5k tokens | warning |
-| Thin description (<40 chars) | warning |
+| Thin description (\<40 chars) | warning |
 | No "use when" trigger phrasing in description | info |
 | The same paragraph in two places (SKILL.md / references) | warning |
 | `references/` files nothing points to | info |
@@ -122,8 +146,14 @@ Beyond the spec table above:
 | `disable-model-invocation` present | info (deliberate trigger choice; trigger checks skipped) |
 | Unknown frontmatter fields | warning |
 | Missing `metadata.version` | info |
-| **Credential-looking files inside the skill** (.env, *.pem, *.key, credentials*.json, …) | warning; **error with `--packaging`** |
+| **Credential-looking files inside the skill** (.env, \*.pem, \*.key, credentials\*.json, …) | warning; **error with `--packaging`** |
 | Skill ≥30MB (API zip limit) | error |
+| Skill invokes `scripts/steer.py` but ships no bundle | error |
+| Bundle lacks a component the skill invokes | warning; error with `--packaging` |
+| Bundle edited by hand (differs from regeneration) | warning; error with `--packaging` |
+| Bundle missing its `# steer-runtime:` header | warning |
+| Bundle written by an older steer version | info |
+| `steer ...` spelling in a skill that bundles its runtime | info |
 
 Exits with code 1 on any error, so CI can gate on it.
 
@@ -137,7 +167,8 @@ steer list [--json]
 
 `package` runs packaging-strict validation and produces a zip with the
 skill folder at its root, the layout the Claude API (`POST /v1/skills`)
-and claude.ai uploads expect. `install` validates, then copies into
+and claude.ai uploads expect. It refreshes a stale bundled runtime before
+zipping and refuses a hand-edited one. `install` validates, then copies into
 `.claude/skills` (project), `~/.claude/skills` (`--user`), or any root
 (`--dest`). `list` discovers skills across `.claude/skills` and
 `.agents/skills` at both scopes, with a validation status per skill.
@@ -145,22 +176,34 @@ and claude.ai uploads expect. `install` validates, then copies into
 ## Scripts: the result envelope
 
 Scripts are executed, not read; their only interface is argv in and
-stdout out. Steer standardizes the out side:
+stdout out. Steer standardizes the out side to one envelope:
 
-```python
-from steer.output import print_envelope
-
-print_envelope("ok", "Report generated",
-               data={"rows": 120}, artifacts=["out/report.pdf"])
-# prints (pretty-printed):
-# {"status": "ok", "summary": "...", "data": {...}, "artifacts": [...]}
-# and returns the right exit code (1 when status == "error")
+```json
+{
+  "status": "ok",
+  "summary": "Report generated",
+  "data": { "rows": 120 },
+  "artifacts": ["out/report.pdf"]
+}
 ```
 
 Statuses: `ok`, `error`, `blocked`, `needs_input`, `partial`; an optional
-`errors=[...]` list carries the details. Keep scripts non-interactive,
+`errors: [...]` list carries the details. Keep scripts non-interactive,
 self-documenting via `--help`, diagnostics on stderr, distinct exit codes.
-`steer new --scripts` generates this shape.
+
+`steer new --scripts` generates this shape with nothing but the standard
+library, so a script depends on steer only if it wants to. When the skill
+bundles components, scripts sitting next to `scripts/steer.py` can import
+the library from it:
+
+```python
+from steer import Store, print_envelope
+
+print_envelope("ok", "Report generated",
+               data={"rows": 120}, artifacts=["out/report.pdf"])
+# prints the envelope and returns the right exit code
+# (1 when status == "error")
+```
 
 ## Steer's own paths
 

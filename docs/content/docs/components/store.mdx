@@ -1,0 +1,103 @@
+---
+title: Store
+description: "Per-skill SQLite: KV, JSON documents, and raw SQL, in two scopes."
+---
+
+Skills are stateless by accident. The ones that persist anything invent a
+location (`/tmp/session-$$`, a bespoke dot-directory, sibling workspace
+dirs, a markdown file with checkboxes) and a hand-typed JSON schema that the next
+script silently depends on.
+
+`steer store` gives every skill a real database with two scopes:
+
+| Scope | Path | For |
+|---|---|---|
+| `user` (default) | `~/.steer/skills/<skill>/store.db` | caches, history, preferences; survives across projects |
+| `workspace` | `<project>/.steer/<skill>/store.db` | plans, run records, project state; travels with the repo |
+
+## When to use it
+
+- Anything worth keeping between runs: run history, caches, an analyzed
+  profile, a binding the user already confirmed once.
+- Real skills pay for the missing primitive by redoing work. Vercel's
+  [vercel-cli-with-tokens](https://github.com/vercel-labs/agent-skills)
+  rediscovers the project and team binding every session (workspace
+  state), and [humanizer](https://github.com/blader/humanizer)
+  re-analyzes the user's writing sample on every run (a user-scoped
+  profile). The [repo-health example](https://github.com/bh-rat/steer/tree/main/examples/repo-health)
+  keeps each run's totals at workspace scope, which is what powers its
+  trend arrows.
+- Skip it when runs share nothing. State you never read back is debt,
+  not memory.
+
+## CLI
+
+```bash
+# key/value
+steer store put last_run '"2026-06-11"'
+steer store get last_run
+steer store del last_run
+steer store keys
+
+# JSON documents
+steer store insert runs '{"pr": 142, "ok": true}'
+steer store find runs --where ok=true --limit 10
+steer store tables
+
+# raw SQL escape hatch
+steer store query "SELECT COUNT(*) AS n FROM runs"
+```
+
+All commands take `--skill` (default: inferred from the nearest SKILL.md or
+`STEER_SKILL`), `--scope user|workspace`, and `--workspace <dir>`. Values
+are parsed as JSON when possible, kept as strings otherwise. Reads print
+JSON, which scripts and agents parse directly.
+
+## Python
+
+```python
+from steer import Store
+
+with Store("pr-review") as store:                      # user scope
+    store.put("last_run", {"at": "2026-06-11", "ok": True})
+    store.get("last_run")
+    store.insert("runs", {"pr": 142, "findings": 3})
+    store.find("runs", {"pr": 142})
+    store.query("SELECT json_extract(data,'$.findings') AS n FROM runs")
+
+ws = Store("pr-review", scope="workspace", workspace=".")
+```
+
+Inside a skill, sibling scripts import the same API from the bundled
+runtime next to them (`from steer import Store`); the repo-health
+example's report script does exactly that to record run totals.
+
+## In a SKILL.md
+
+`steer new --with store` generates:
+
+```text
+## Memory
+
+This skill persists data between runs with the bundled `store` command
+(per-skill SQLite). Examples:
+
+    python3 scripts/steer.py store put last_run '"2026-06-11"'
+    python3 scripts/steer.py store get last_run
+    python3 scripts/steer.py store insert runs '{"file": "report.pdf", "ok": true}'
+
+Use `--scope workspace` for state that belongs to this project rather
+than the user.
+```
+
+Documents land in auto-created tables (`id`, `data` JSON, `created_at`);
+`find` filters with `json_extract` equality and returns dicts with `_id` /
+`_created_at` injected. Table names are validated; everything else is
+parameterized.
+
+## Notes
+
+- SQLite in WAL mode through the stdlib `sqlite3` module, so there is
+  nothing to install.
+- The raw `query` API is the escape hatch for migrations, joins, and
+  indexes; steer doesn't hide SQL from you.

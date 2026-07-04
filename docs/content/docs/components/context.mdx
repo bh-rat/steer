@@ -11,6 +11,17 @@ detection shim in three separate places.
 
 `steer context` is that preamble as one command.
 
+## When to use it
+
+- The skill behaves differently by platform, project type, available
+  tools, or host agent: any body with a "first, check whether..." step.
+- The [repo-health example](https://github.com/bh-rat/steer/tree/main/examples/repo-health)
+  ships it as step 0; the snapshot tells the agent up front whether it
+  is even in a git repository, which the report then handles instead of
+  discovering mid-run.
+- Skip it when the skill does the same thing everywhere. A pure text
+  transform has nothing to probe.
+
 ## CLI
 
 ```bash
@@ -26,7 +37,7 @@ steer context --workspace ~/work/acme  # inspect another directory
 - **System**: Darwin arm64, Python 3.13.5, cwd `/Users/jane/work/acme`
 - **Host agent**: claude-code (non-interactive)
 - **Git**: branch `main`, 3 dirty files (1 untracked)
-  - `a1b2c3d fix payment retry`
+  - `a1b2c3d fix flaky retry test`
 - **Project**: node, python
   - package managers: pnpm, uv
   - also present: docker, github-actions
@@ -62,10 +73,13 @@ print(to_markdown(snapshot))
 `steer new --with context` generates:
 
 ```text
-1. **Ground yourself.** Run `steer context` and read the snapshot before
-   doing anything else; it tells you the platform, project type, git
-   state, and which tools exist here.
+1. **Ground yourself.** Run `python3 scripts/steer.py context` and read
+   the snapshot before doing anything else; it tells you the platform,
+   project type, git state, and which tools exist here.
 ```
+
+The command runs through the skill's bundled runtime, so it works on
+machines that never installed steer.
 
 In Claude Code you can go further and inject it before the model even
 reads the skill body, with dynamic context injection:
@@ -73,3 +87,7 @@ reads the skill body, with dynamic context injection:
 ```text
 !`steer context`
 ```
+
+Injection runs before the skill body loads, from the project directory,
+so this one spelling does need `steer` on the PATH; the bundled spelling
+inside the body has no such requirement.
