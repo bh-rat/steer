@@ -1,0 +1,49 @@
+# Declarative flow for this skill. The agent drives it with:
+#   steer flow status | next | done <id>   (run inside the workspace)
+#
+# The four phases of systematic debugging, machine-gated. Investigation
+# steps complete only when their artifact exists; the fix step stays
+# locked until everything before it is real.
+
+name = "systematic-debugging"
+
+[[steps]]
+id = "investigate"
+description = "Phase 1: root cause investigation"
+directive = "Work Phase 1 of SKILL.md: read the errors completely, reproduce the issue reliably, check recent changes (steer context --only git helps), and instrument component boundaries when the system has several. Record findings in out/debug/evidence.md: exact error text, reproduction steps, recent-change candidates, evidence per boundary."
+
+[steps.verify]
+file_exists = "out/debug/evidence.md"
+
+[[steps]]
+id = "analyze"
+description = "Phase 2: pattern analysis"
+directive = "Work Phase 2 of SKILL.md: find a working example of the same pattern, read the reference implementation completely, then list every difference between working and broken in out/debug/comparison.md, however small."
+requires = ["investigate"]
+
+[steps.verify]
+file_exists = "out/debug/comparison.md"
+
+[[steps]]
+id = "hypothesize"
+description = "Phase 3: single written hypothesis"
+directive = "Work Phase 3 of SKILL.md: write out/debug/hypothesis.md stating 'I think X is the root cause because Y' plus the smallest change that would test it. One hypothesis, one variable at a time."
+requires = ["analyze"]
+
+[steps.verify]
+file_exists = "out/debug/hypothesis.md"
+
+[[steps]]
+id = "failing-test"
+description = "Phase 4, step 1: failing reproduction before any fix"
+directive = "Create the simplest failing reproduction: an automated test if a framework exists, otherwise a one-off script. Record the command and its observed failing output in out/debug/failing-test.md. No fixes before this file exists."
+requires = ["hypothesize"]
+
+[steps.verify]
+file_exists = "out/debug/failing-test.md"
+
+[[steps]]
+id = "fix"
+description = "Phase 4: one fix at the root cause, verified"
+directive = "Implement ONE fix at the root cause. Rerun the failing reproduction (passes now?) and the surrounding tests (nothing else broke?). Only then: steer flow done fix. If a fix fails, return to Phase 1 with the new information; if you are about to attempt a third fix, stop and question the architecture with your human partner first."
+requires = ["failing-test"]
