@@ -33,11 +33,11 @@ refuses to ship credential files.
 </Card>
 
 <Card title="Runtime components" icon="battery-full">
-Batteries for running skills.
+Batteries the skill carries with it.
 
-Each component is both a Python library and a CLI subcommand, so a SKILL.md
-can use steer with no code at all: `steer context`, `steer secrets
-check`, `steer flow next`, `steer store get`, `steer proc start`.
+Each component is both a Python library and a CLI, and `steer new` bundles
+the chosen ones into the skill as `scripts/steer.py`: a SKILL.md uses them
+with no code at all, and whoever runs the skill needs Python, not steer.
 </Card>
 
 </CardGroup>
@@ -61,15 +61,23 @@ stripe-report/
 ├── SKILL.md       # generated, spec-valid, components wired in
 ├── flow.toml      # declarative steps with verify conditions
 └── scripts/
+    ├── steer.py   # bundled runtime: exactly the chosen components, stdlib only
     └── example.py # JSON envelope on stdout, diagnostics on stderr
 ```
 
 The generated SKILL.md instructs the agent:
 
-1. Ground yourself: `steer context`
-2. Check credentials: `steer secrets check STRIPE_REPORT_API_KEY`; if
-   missing, ask the human to run `steer secrets set ...`
-3. Follow the flow: `steer flow next`, until everything verifies complete
+1. Ground yourself: `python3 scripts/steer.py context`
+2. Check credentials: `python3 scripts/steer.py secrets check
+   STRIPE_REPORT_API_KEY`; if missing, ask the human to run the
+   `secrets set` command it prints
+3. Follow the flow: `python3 scripts/steer.py flow next`, until
+   everything verifies complete
+
+The skill invokes its own bundled runtime, so running it needs Python
+3.11 or newer and nothing else; installing steer is the author's tool,
+not the consumer's tax. Sibling scripts import the same file
+(`from steer import Store`).
 
 ## How steer relates to the rest of the ecosystem
 

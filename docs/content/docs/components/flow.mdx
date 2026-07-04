@@ -13,6 +13,22 @@ against reality or is a **mandate** the agent marks explicitly, and both
 are gated on prerequisites. The agent only ever sees the current step's
 directive.
 
+## When to use it
+
+- The process has ordered steps the agent must not shortcut: collect
+  before analyze, review before publish, the failing test before the fix.
+- Ordering rhetoric is the hand-roll we saw most. superpowers'
+  [systematic-debugging](https://github.com/obra/superpowers) states an
+  Iron Law ("You MUST complete each phase before proceeding") that
+  nothing checks, and [humanizer](https://github.com/blader/humanizer)
+  ends its process with a rule (the output contains no em or en dashes)
+  that nothing verifies. Both translate directly: the phase's written
+  artifact or the final scan becomes a verify condition, and skipping
+  ahead turns from a temptation into a refused command.
+- Skip it for a task prose already carries: two steps with no reason to
+  cheat don't need a DAG. A flow earns its keep when skipping is
+  tempting and expensive.
+
 ## Declarative: `flow.toml`
 
 Ship a `flow.toml` in the skill directory; no code is required.
@@ -80,6 +96,9 @@ nearest skill/`flow.toml` above the working directory. The **workspace**
 where mandate state persists: `<workspace>/.steer/flows/<name>.json`.
 The skill defines the process; the workspace holds the progress.
 
+A generated skill spells these commands `python3 scripts/steer.py flow
+...` through its bundled runtime; behavior is identical.
+
 ```text
   RELEASE WORKFLOW
   ─────────────────────────────────────────
@@ -87,6 +106,27 @@ The skill defines the process; the workspace holds the progress.
 
   ▸ Next: review
     Read out/config.json; confirm the changelog is accurate
+```
+
+## In a SKILL.md
+
+`steer new --with flow` writes the enforcement contract into the skill:
+
+```text
+This skill has an enforced flow: steps verify themselves against
+reality, and you cannot skip ahead.
+
+1. Announce: "Working through the stripe-report flow."
+2. Run `python3 scripts/steer.py flow status` (in the workspace) to see
+   progress and the current step.
+3. Do what the directive says. Steps with a verify condition complete
+   automatically once reality matches; for mandate steps, mark completion
+   with `python3 scripts/steer.py flow done <step-id>`.
+4. Run `python3 scripts/steer.py flow next` and repeat until it reports
+   all steps complete.
+
+Do NOT claim the work is done while `python3 scripts/steer.py flow
+status` shows incomplete steps. The flow is defined in `flow.toml`.
 ```
 
 ## Programmatic: Python

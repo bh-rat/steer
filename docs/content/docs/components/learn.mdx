@@ -12,6 +12,16 @@ the skill itself.
 memory systems that hold up in practice: automatic capture, deterministic
 curation, gated application.
 
+## When to use it
+
+- The skill runs repeatedly and reality corrects it: endpoints differ by
+  account, a preference surfaces, a workaround becomes the rule.
+- The [repo-health example](https://github.com/bh-rat/steer/tree/main/examples/repo-health)
+  ships the generated Learning section: capture at the moment of
+  correction, digest at run start, outcome recorded before finishing.
+- Skip it for one-shot utilities. Lessons pay for themselves through
+  repetition; a skill nobody reruns has nothing to learn from.
+
 ## The loop
 
 ```text
@@ -19,6 +29,11 @@ capture ──▶ curate ──▶ apply ──▶ promote
 (agent)    (steer,     (agent     (human,
            no LLM)     reads)     into the skill)
 ```
+
+Commands below use the installed CLI's spelling. A generated SKILL.md
+spells the same commands `python3 scripts/steer.py learn ...` through the
+skill's bundled runtime, and the digest's own hints then use that
+spelling too.
 
 1. **Capture**: the SKILL.md tells the agent to record lessons the moment
    they happen (a user correction, a failure that then worked another way):
@@ -125,7 +140,9 @@ reflector) for:
 
 - user corrections ("no, …", "that's wrong", "use X instead", "I meant …")
 - failed tool calls (`is_error: true`)
-- whether `steer learn note` / `steer learn run` already happened
+- whether a `learn note` / `learn run` command already ran (it counts
+  only commands actually executed, not the skill's own instructions
+  quoted in the transcript)
 
 If there are signals and nothing was captured, it blocks the stop once,
 with exact instructions: distill each durable lesson, record the run
@@ -138,6 +155,10 @@ threshold with `--min-signals N`.
 Portability: the hook is a Claude Code extension, so `steer validate` flags
 it with a PORTABILITY warning by design. On other agents the skill degrades
 gracefully to the instruction-driven loop in its Learning section.
+
+The hook command runs the installed CLI, not the bundle: auto-learn is
+the one steer feature that needs `steer` on the consumer's PATH, and the
+generated SKILL.md says so next to it.
 
 ## Guardrails
 

@@ -15,6 +15,21 @@ script silently depends on.
 | `user` (default) | `~/.steer/skills/<skill>/store.db` | caches, history, preferences; survives across projects |
 | `workspace` | `<project>/.steer/<skill>/store.db` | plans, run records, project state; travels with the repo |
 
+## When to use it
+
+- Anything worth keeping between runs: run history, caches, an analyzed
+  profile, a binding the user already confirmed once.
+- Real skills pay for the missing primitive by redoing work. Vercel's
+  [vercel-cli-with-tokens](https://github.com/vercel-labs/agent-skills)
+  rediscovers the project and team binding every session (workspace
+  state), and [humanizer](https://github.com/blader/humanizer)
+  re-analyzes the user's writing sample on every run (a user-scoped
+  profile). The [repo-health example](https://github.com/bh-rat/steer/tree/main/examples/repo-health)
+  keeps each run's totals at workspace scope, which is what powers its
+  trend arrows.
+- Skip it when runs share nothing. State you never read back is debt,
+  not memory.
+
 ## CLI
 
 ```bash
@@ -51,6 +66,28 @@ with Store("stripe-report") as store:                  # user scope
     store.query("SELECT json_extract(data,'$.total') AS t FROM runs")
 
 ws = Store("stripe-report", scope="workspace", workspace=".")
+```
+
+Inside a skill, sibling scripts import the same API from the bundled
+runtime next to them (`from steer import Store`); the repo-health
+example's report script does exactly that to record run totals.
+
+## In a SKILL.md
+
+`steer new --with store` generates:
+
+```text
+## Memory
+
+This skill persists data between runs with the bundled `store` command
+(per-skill SQLite). Examples:
+
+    python3 scripts/steer.py store put last_run '"2026-06-11"'
+    python3 scripts/steer.py store get last_run
+    python3 scripts/steer.py store insert runs '{"file": "report.pdf", "ok": true}'
+
+Use `--scope workspace` for state that belongs to this project rather
+than the user.
 ```
 
 Documents land in auto-created tables (`id`, `data` JSON, `created_at`);

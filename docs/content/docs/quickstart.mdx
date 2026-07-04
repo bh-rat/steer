@@ -26,15 +26,19 @@ steer new stripe-report \
 Created skill at stripe-report
   + SKILL.md
   + flow.toml
+  + scripts/steer.py
   + scripts/example.py
 
 Validation: clean
 ```
 
 Components are opt-in: `--with secrets,store,context,flow,proc` wires the
-matching sections into the generated SKILL.md. `--scripts` adds an example
-script that follows the agentic-interface rules (non-interactive, JSON
-envelope on stdout, diagnostics on stderr).
+matching sections into the generated SKILL.md. Choosing any component also
+writes `scripts/steer.py`, the skill's bundled runtime: a self-contained,
+stdlib-only copy of exactly those components, which is what the generated
+SKILL.md invokes (`python3 scripts/steer.py ...`). `--scripts` adds an
+example script that follows the agentic-interface rules (non-interactive,
+JSON envelope on stdout, diagnostics on stderr).
 
 ## 2. Write the skill
 
@@ -90,6 +94,10 @@ steer secrets set STRIPE_API_KEY    # hidden prompt; lands in the OS keychain
 steer flow status --workspace ~/work/acme   # progress + current directive
 ```
 
+These are the author's spelling; the generated SKILL.md spells the same
+commands `python3 scripts/steer.py ...`, which works on machines where
+steer was never installed.
+
 ```text
   STRIPE-REPORT WORKFLOW
   ─────────────────────────────────────────
@@ -111,7 +119,9 @@ steer package             # → stripe-report.zip for the Claude API / claude.ai
 
 `steer validate` fails the build on spec violations (bad name, missing or
 oversized description, broken file references) and refuses packaging when
-credential-looking files are inside the skill directory.
+credential-looking files are inside the skill directory. It also checks the
+bundled runtime: a stale bundle is refreshed by `steer package`, an edited
+one is refused.
 
 ## 5. Use it
 
@@ -119,3 +129,7 @@ In Claude Code, the skill is now invocable as `/stripe-report` and triggers
 automatically when a request matches its description. Other clients pick it
 up from `.claude/skills` / `.agents/skills` per their discovery rules
 (`steer install --dest` targets any root).
+
+Whoever the skill reaches runs it with plain `python3`: the runtime rides
+along in `scripts/steer.py`, so nobody who receives your skill has to
+install steer.

@@ -49,7 +49,7 @@ const faq = [
   },
   {
     q: 'Do agents need steer installed to run my skill?',
-    a: 'For the runtime components, yes: the skill calls the steer CLI, so it needs to be on PATH (uv tool install steer-ai). The authoring tools leave no trace in the skill, so a skill that uses no components has no steer dependency at all.',
+    a: 'No. A skill that uses components carries its own runtime: steer new writes scripts/steer.py into the skill, a self-contained copy of exactly the chosen components, and the SKILL.md invokes it as python3 scripts/steer.py. Running the skill needs Python 3.11+, not steer. The one exception is the optional auto-learn Stop hook, which runs the installed CLI.',
   },
   {
     q: 'Does it only work with Claude Code?',
@@ -57,7 +57,7 @@ const faq = [
   },
   {
     q: 'Can I adopt it in an existing skill?',
-    a: 'Yes. steer validate and steer package work on any spec skill, and components come one at a time: add steer secrets today and leave the rest of the skill alone.',
+    a: 'Yes. steer validate and steer package work on any spec skill, and components come one at a time: steer bundle --with secrets drops a runtime with just that component into the skill, and the rest of the skill stays as it was.',
   },
   {
     q: 'Is steer a registry or marketplace?',

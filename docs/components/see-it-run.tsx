@@ -16,7 +16,7 @@ const steps: Step[] = [
   {
     id: 'scaffold',
     title: 'Scaffold',
-    desc: 'One command generates a spec-valid skill with the components wired into its SKILL.md.',
+    desc: 'One command generates a spec-valid skill: components wired into its SKILL.md, plus a bundled runtime the skill carries with it.',
     lines: [
       {
         kind: 'cmd',
@@ -25,6 +25,7 @@ const steps: Step[] = [
       { kind: 'out', text: 'Created skill at payment-report' },
       { kind: 'out', text: '  + SKILL.md' },
       { kind: 'out', text: '  + flow.toml' },
+      { kind: 'out', text: '  + scripts/steer.py' },
       { kind: 'out', text: '  + scripts/example.py' },
       { kind: 'out', text: '' },
       { kind: 'ok', text: 'Validation: clean' },
@@ -37,14 +38,17 @@ const steps: Step[] = [
     lines: [
       { kind: 'cmd', text: 'steer flow status' },
       { kind: 'out', text: '  PAYMENT-REPORT WORKFLOW' },
+      { kind: 'out', text: '  ─────────────────────────────────────────' },
       { kind: 'out', text: '  Progress: 0/3 steps  ● fetch  ○ review  ○ report' },
       { kind: 'out', text: '' },
       { kind: 'out', text: '  ▸ Next: fetch' },
+      { kind: 'out', text: '    Run scripts/fetch.py --month <month>; it writes out/charges.json' },
       { kind: 'cmd', text: 'steer flow done review' },
       {
         kind: 'err',
         text: "Not so fast: Step 'review' is blocked. Complete these first: fetch",
       },
+      { kind: 'out', text: 'Run `steer flow next` to see the current step.' },
     ],
   },
   {
@@ -62,6 +66,10 @@ const steps: Step[] = [
         kind: 'out',
         text: '  steer secrets set PAYMENT_REPORT_API_KEY --skill payment-report',
       },
+      {
+        kind: 'out',
+        text: '(or export PAYMENT_REPORT_API_KEY=... in the environment)',
+      },
     ],
   },
   {
@@ -78,6 +86,10 @@ const steps: Step[] = [
       { kind: 'out', text: '## Lessons from previous runs (payment-report)' },
       { kind: 'out', text: '- [1] Use the EU endpoint for EU accounts' },
       { kind: 'out', text: '- [2] Validate ledger columns before summing' },
+      {
+        kind: 'out',
+        text: '(helped? steer learn confirm <id> · wrong? steer learn dispute <id>)',
+      },
     ],
   },
 ];
