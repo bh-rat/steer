@@ -29,8 +29,10 @@ All notable changes to steer are documented here. The format follows
 
 - Generated SKILL.md templates and the repo-health example use the
   bundled spelling throughout. The installed CLI keeps working exactly
-  as before (runtime commands now live in `steer/runtime_cli.py`,
-  shared by both entry points).
+  as before (the runtime CLI lives in `steer/runtime_cli.py` plus
+  per-component `cli_*` modules, shared by both entry points; a bundle
+  carries only its components' modules and lints like hand-written
+  code).
 - The scaffolded example script no longer imports steer; it prints its
   result envelope with the standard library.
 

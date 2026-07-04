@@ -17,9 +17,16 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-from . import __version__
+from . import (__version__, cli_context, cli_flow, cli_learn, cli_proc,
+               cli_secrets, cli_store)
 from .output import output_json
 from .runtime_cli import _err, register_runtime_commands
+
+# Importing a cli_<component> module registers its commands with
+# runtime_cli; a skill's bundle pulls in exactly its components' modules
+# the same way.
+_CLI_MODULES = (cli_secrets, cli_store, cli_context, cli_flow, cli_proc,
+                cli_learn)
 
 
 def _csv(raw: str) -> List[str]:

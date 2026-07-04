@@ -6,9 +6,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import steer.cli  # noqa: F401 -- importing it registers the cli_* commands
 from steer import __version__, vendor
 from steer.create import COMPONENTS, create_skill
-from steer.runtime_cli import RUNTIME_REGISTRARS
+from steer.runtime_cli import COMPONENT_ORDER, RUNTIME_REGISTRARS
 from steer.validate import validate_skill
 
 from .helpers import SteerTestCase
@@ -27,14 +28,12 @@ class VendorRulesTest(SteerTestCase):
     """The invariants that make flat-namespace amalgamation safe."""
 
     def test_component_registries_agree(self):
-        self.assertEqual(set(COMPONENTS), set(vendor.COMPONENT_MODULES))
-        self.assertEqual(set(COMPONENTS), set(RUNTIME_REGISTRARS))
+        self.assertEqual(tuple(vendor.COMPONENT_MODULES), COMPONENT_ORDER)
+        self.assertEqual(COMPONENTS, COMPONENT_ORDER)
+        self.assertEqual(set(RUNTIME_REGISTRARS), set(COMPONENT_ORDER))
 
     def test_no_top_level_name_collisions(self):
-        modules = list(vendor.BASE_MODULES)
-        for mods in vendor.COMPONENT_MODULES.values():
-            modules.extend(mods)
-        modules.append("runtime_cli")
+        modules = vendor._bundle_modules(ALL)
         owners = {}  # name -> (module, source segment)
         for module in modules:
             source = (REPO_ROOT / "steer" / f"{module}.py").read_text()
@@ -66,8 +65,8 @@ class VendorRulesTest(SteerTestCase):
         # `from . import x` has no flat equivalent; generate() must refuse.
         source = "from . import frontmatter\n"
         with self.assertRaises(vendor.VendorError):
-            vendor._rewrite_relative_imports("fake", source,
-                                             ast.parse(source), known=set())
+            vendor._rewrite_module_imports("fake", source,
+                                           ast.parse(source), known=set())
 
     def test_generate_is_deterministic_and_order_insensitive(self):
         self.assertEqual(vendor.generate(["store", "secrets"]),
@@ -76,12 +75,36 @@ class VendorRulesTest(SteerTestCase):
     def test_top_level_alias_must_come_from_earlier_module(self):
         source = "from .zzz import later_name as alias\n"
         with self.assertRaises(vendor.VendorError):
-            vendor._rewrite_relative_imports("fake", source,
-                                             ast.parse(source), known=set())
+            vendor._rewrite_module_imports("fake", source,
+                                           ast.parse(source), known=set())
         # Inside a function the assignment runs at call time; no constraint.
         deferred = "def f():\n    from .zzz import later_name as alias\n"
-        vendor._rewrite_relative_imports("fake", deferred,
-                                         ast.parse(deferred), known=set())
+        vendor._rewrite_module_imports("fake", deferred,
+                                       ast.parse(deferred), known=set())
+
+    def test_hoisted_import_conflicts_are_refused(self):
+        imports = vendor._HoistedImports()
+        imports.collect("m1", ast.parse("from x import q\n"))
+        imports.collect("m3", ast.parse("from x import q\n"))  # same source
+        with self.assertRaises(vendor.VendorError):
+            imports.collect("m2", ast.parse("from z import q\n"))
+
+    def test_bundle_has_one_top_import_block(self):
+        # The generated file must lint like hand-written code: docstring,
+        # then a single deduplicated import block, then everything else.
+        body = ast.parse(vendor.generate(ALL)).body
+        import_idx = [i for i, node in enumerate(body)
+                      if isinstance(node, (ast.Import, ast.ImportFrom))]
+        self.assertTrue(import_idx)
+        first_other = next(
+            i for i, node in enumerate(body[1:], start=1)
+            if not isinstance(node, (ast.Import, ast.ImportFrom)))
+        self.assertLess(max(import_idx), first_other,
+                        "import found below the top import block (E402)")
+        bindings = [alias.asname or alias.name.split(".")[0]
+                    for i in import_idx for alias in body[i].names]
+        self.assertEqual(len(bindings), len(set(bindings)),
+                         "duplicate import binding (F811)")
 
     def test_module_time_seam_reads_are_refused(self):
         for source in ("X = CLI_HINT\n",
@@ -113,6 +136,17 @@ class BundleRunsTest(SteerTestCase):
             absent = set(ALL) - {component}
             for other in absent:
                 self.assertNotIn(f" {other} ", result.stdout)
+
+    def test_subset_bundle_carries_no_excluded_component_code(self):
+        # Excluded handlers must be absent entirely, not just unregistered:
+        # their stripped lazy imports would otherwise leave truly undefined
+        # names in the file (F821 in any consumer repo that lints skills).
+        source = vendor.generate(["secrets"])
+        for other in set(ALL) - {"secrets"}:
+            self.assertNotIn(f"_cmd_{other}", source)
+            self.assertNotIn(f"register_{other}_cli", source)
+        self.assertNotIn("ProcError", source)
+        self.assertNotIn("render_workflow", source)
 
     def test_store_and_secrets_from_workspace_without_flags(self):
         skill = self.make_skill("mem-skill")
